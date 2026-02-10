@@ -1,0 +1,241 @@
+/* =========================================
+   LOGS SECTION STYLES (For Index.html)
+   =========================================
+   
+   Note: This file has styles for logs section in index.html
+   For standalone logs.html, see logs.html file which has its own full-page styles
+*/
+
+.logs-container {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 1.5rem;
+    height: calc(100vh - 300px);
+}
+
+.log-categories {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+    overflow-y: auto;
+}
+
+.log-categories-title {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+    letter-spacing: 0.05em;
+}
+
+.log-category-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.log-category-btn {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    border: none;
+    border-left: 3px solid transparent;
+    cursor: pointer;
+    border-radius: 6px;
+    background: none;
+    color: var(--text-muted);
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.log-category-btn:hover {
+    background-color: var(--bg-body);
+    color: var(--primary);
+    border-left-color: var(--primary);
+    transform: translateX(3px);
+}
+
+.log-category-btn.active {
+    background: linear-gradient(90deg, var(--primary-light) 0%, rgba(255, 255, 255, 0) 100%);
+    color: var(--primary-dark);
+    border-left-color: var(--primary);
+    font-weight: 600;
+}
+
+.log-category-btn i {
+    margin-right: 0.5rem;
+}
+
+/* Terminal Display */
+.log-terminal {
+    background: #121212;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    border: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+}
+
+.log-terminal-header {
+    background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+    color: white;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #333;
+}
+
+.log-terminal-title-section {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.log-terminal-title-section i {
+    font-size: 1.3rem;
+}
+
+.log-terminal-info-section div {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.log-terminal-subtitle {
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+
+.log-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.log-status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #4caf50;
+    animation: pulse 2s infinite;
+}
+
+/* Terminal Content */
+#log-viewer {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    color: #4caf50;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    line-height: 1.5;
+    font-size: 13px;
+    scrollbar-width: thin;
+    scrollbar-color: #555 #1a1a1a;
+}
+
+#log-viewer::-webkit-scrollbar {
+    width: 8px;
+}
+
+#log-viewer::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+
+#log-viewer::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 4px;
+}
+
+#log-viewer::-webkit-scrollbar-thumb:hover {
+    background: #777;
+}
+
+/* Log Styling */
+.log-timestamp {
+    color: #999;
+}
+
+.log-info {
+    color: #2196f3;
+}
+
+.log-warning {
+    color: #ff9800;
+}
+
+.log-error {
+    color: #f44336;
+}
+
+.log-success {
+    color: #4caf50;
+}
+
+/* Terminal Footer */
+.log-terminal-footer {
+    background: #1a1a1a;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid #333;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.log-terminal-footer button {
+    padding: 0.5rem 1rem;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.log-terminal-footer button:first-child {
+    background: #ff9800;
+}
+
+.log-terminal-footer button:last-child {
+    background: #03a9f4;
+}
+
+.log-terminal-footer button:hover {
+    opacity: 0.8;
+}
+
+/* Animations */
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 6px rgba(76, 175, 80, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+    }
+}
+
+@media (max-width: 768px) {
+    .logs-container {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+
+    .log-categories {
+        display: none;
+    }
+
+    .log-terminal {
+        height: calc(100vh - 300px);
+    }
+}

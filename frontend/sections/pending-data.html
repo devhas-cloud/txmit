@@ -1,0 +1,51 @@
+<!-- PENDING DATA SECTION -->
+<h2 class="page-title">Data Siap Dikirim</h2>
+    <p class="page-subtitle">Data yang belum dikirim ke API eksternal</p>
+
+    <!-- Filter -->
+    <div class="filter-group">
+        <div>
+            <label>Tanggal Mulai</label>
+            <input type="date" id="filter-pending-from" />
+        </div>
+        <div>
+            <label>Tanggal Akhir</label>
+            <input type="date" id="filter-pending-to" />
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+            <button class="filter-btn" onclick="filterPendingData()">
+                <i class="bi bi-search"></i> Filter
+            </button>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="section">
+        <div class="table-container">
+            <div class="table-responsive">
+                <table class="table" id="pending-data-table">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Tanggal</th>
+                            <th>pH</th>
+                            <th>ORP</th>
+                            <th>TDS</th>
+                            <th>DO</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pending-data-body">
+                        <tr>
+                            <td colspan="7" class="text-center text-muted">
+                                <div class="loading">
+                                    <div class="loading-spinner"></div>
+                                    <p>Memuat data pending...</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>

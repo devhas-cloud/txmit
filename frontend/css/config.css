@@ -1,0 +1,64 @@
+/* =========================================
+   CONFIG SECTION STYLES
+   ========================================= */
+
+.config-section {
+    /* Inherits common styles from style.css */
+}
+
+.config-form-section {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.config-form-section h5 {
+    color: var(--primary);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.config-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.config-form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.config-form-group .form-control {
+    width: 100%;
+}
+
+.config-form-group small {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-top: 0.3rem;
+}
+
+.config-actions {
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+@media (max-width: 768px) {
+    .config-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .config-actions {
+        flex-direction: column;
+    }
+
+    .config-actions button {
+        width: 100%;
+    }
+}

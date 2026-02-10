@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  txmit:
+    build: .
+    container_name: txmit
+    network_mode: "host"
+    volumes:
+      - ./:/app
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    restart: always
+
+  database:
+    image: devhas01/db-logix:1.0
+    container_name: db_txmit
+    network_mode: "host"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    restart: always

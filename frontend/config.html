@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Configuration Manager</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <style>
+    :root {
+      --primary-dark: #1a237e;
+      --primary: #283593;
+      --primary-light: #3949ab;
+      --secondary: #03a9f4;
+      --accent: #00bcd4;
+      --terminal-bg: #121212;
+      --terminal-text: #4caf50;
+      --terminal-border: #333;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f7fa;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    .navbar {
+      background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .navbar-brand {
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .sidebar {
+      height: calc(100vh - 56px);
+      background-color: #ffffff;
+      padding-top: 20px;
+      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+      transition: all 0.3s ease;
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      padding: 0 15px 15px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .sidebar .nav-link {
+      padding: 12px 20px;
+      margin: 5px 15px;
+      border-radius: 8px;
+      color: #555;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+    }
+
+    .sidebar .nav-link:hover {
+      background-color: #f0f4f8;
+      color: var(--primary);
+      transform: translateX(5px);
+    }
+
+    .sidebar .nav-link.active {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      color: #fff !important;
+      box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3);
+    }
+
+    .sidebar .nav-link i {
+      margin-right: 10px;
+      font-size: 1.1rem;
+    }
+
+    .main-content {
+      height: calc(100vh - 56px);
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .config-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .config-title {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: var(--primary-dark);
+      margin: 0;
+    }
+
+    .config-container {
+      flex-grow: 1;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .config-section {
+      padding: 20px;
+      border-bottom: 1px solid #eee;
+      overflow-y: auto;
+    }
+
+    .config-section:last-child {
+      border-bottom: none;
+    }
+
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--primary-dark);
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+    }
+
+    .section-title i {
+      margin-right: 10px;
+      color: var(--secondary);
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-label {
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 5px;
+    }
+
+    .form-control {
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .form-control:focus {
+      border-color: var(--secondary);
+      box-shadow: 0 0 0 0.2rem rgba(3, 169, 244, 0.25);
+    }
+
+    .form-check {
+      padding-left: 0;
+    }
+
+    .form-check-input {
+      width: 40px;
+      height: 20px;
+      margin-top: 0.3rem;
+      cursor: pointer;
+      accent-color: var(--secondary);
+    }
+
+    .form-check-label {
+      margin-left: 10px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .row-form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 15px;
+    }
+
+    .help-text {
+      font-size: 0.85rem;
+      color: #999;
+      margin-top: 5px;
+    }
+
+    .config-actions {
+      padding: 20px;
+      background-color: #f9f9f9;
+      border-top: 1px solid #eee;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .btn-save {
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-save:hover {
+      background-color: #45a049;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+    }
+
+    .btn-reset {
+      background-color: #9e9e9e;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-reset:hover {
+      background-color: #757575;
+      transform: translateY(-2px);
+    }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 500;
+    }
+
+    .alert-success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .alert-error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .alert-info {
+      background-color: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .status-active {
+      background-color: #c8e6c9;
+      color: #2e7d32;
+    }
+
+    .status-inactive {
+      background-color: #ffccbc;
+      color: #d84315;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 40px;
+    }
+
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid var(--secondary);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 10px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        position: fixed;
+        top: 56px;
+        left: -300px;
+        width: 300px;
+        height: 100%;
+        z-index: 999;
+        transition: left 0.3s ease;
+      }
+
+      .sidebar.active {
+        left: 0;
+      }
+
+      .main-content {
+        padding: 15px;
+      }
+
+      .row-form {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .section-group {
+      margin-bottom: 25px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #eee;
+    }
+
+    .section-group:last-child {
+      border-bottom: none;
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container-fluid">
+      <span class="navbar-brand mb-0 h1">
+        <i class="bi bi-gear-fill me-2"></i>Configuration Manager
+      </span>
+      <div class="d-flex align-items-center gap-2">
+        <span class="text-white me-3" id="currentTime"></span>
+        <span class="badge bg-light text-dark me-3" id="statusBadge">Ready</span>
+        <span class="text-white me-3" id="userInfo" style="font-size: 12px;"></span>
+        <button class="btn btn-sm btn-warning" id="rebootBtn" onclick="rebootSystem()" style="margin-right: 10px;">
+          <i class="bi bi-arrow-repeat"></i> Reboot
+        </button>
+        <button class="btn btn-sm btn-outline-light" id="logoutBtn" onclick="logout()">
+          <i class="bi bi-box-arrow-right"></i> Logout
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container-fluid p-0">
+    <div class="row g-0">
+      <!-- Sidebar -->
+      <div class="col-md-3 col-lg-2 sidebar">
+        <div class="sidebar-header">
+          <h6 class="mb-0 text-muted">NAVIGATION</h6>
+        </div>
+        <nav class="nav flex-column">
+          <a class="nav-link active" href="config.html">
+            <i class="bi bi-gear-fill"></i> Configuration
+          </a>
+        </nav>
+      </div>
+
+      <!-- Main Content -->
+      <div class="col-md-9 col-lg-10 main-content">
+        <div class="config-header">
+          <h4 class="config-title">
+            <i class="bi bi-gear me-2"></i>System Configuration
+          </h4>
+        </div>
+
+        <div id="alert-container"></div>
+        
+        <!-- Reboot Warning -->
+        <div class="alert alert-warning" id="rebootWarning" style="display: none; margin-bottom: 15px; border-radius: 6px;">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          <span><strong>⚠️ Perhatian:</strong> Konfigurasi telah diubah. Sistem memerlukan <strong>reboot</strong> untuk menerapkan perubahan. Klik tombol "Reboot" di atas.</span>
+        </div>
+
+        <div class="config-container">
+          <div class="config-section">
+            <form id="configForm">
+              
+              <!-- Informasi Reboot -->
+              <div style="background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 15px; margin-bottom: 20px; color: #856404;">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>ℹ️ Informasi Penting:</strong>
+                <div style="margin-top: 8px; font-size: 14px;">
+                  Setiap kali Anda mengubah konfigurasi dan menekan "Save Configuration", sistem akan mencoba melakukan auto-restart otomatis. 
+                  <strong>Namun, untuk memastikan semua perubahan diterapkan dengan sempurna, disarankan untuk melakukan reboot sistem secara manual menggunakan tombol "Reboot" yang tersedia di bagian atas halaman.</strong>
+                </div>
+              </div>
+
+              <!-- General Configuration -->
+              <div class="section-group">
+                <div class="section-title">
+                  <i class="bi bi-sliders"></i> General Configuration
+                </div>
+                <div class="row-form">
+                  <div class="form-group">
+                    <label class="form-label">Application Port</label>
+                    <input type="number" class="form-control" name="PORT_NUMBER_APP" id="PORT_NUMBER_APP">
+                    <div class="help-text">Port untuk aplikasi web</div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Log Server Port</label>
+                    <input type="number" class="form-control" name="PORT_NUMBER_LOG" id="PORT_NUMBER_LOG">
+                    <div class="help-text">Port untuk log server</div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Timezone</label>
+                    <select class="form-control" name="TIMEZONE" id="TIMEZONE">
+                      <option value="Asia/Jakarta">Asia/Jakarta (UTC+7)</option>
+                      <option value="Asia/Makassar">Asia/Makassar (UTC+8)</option>
+                      <option value="Asia/Jayapura">Asia/Jayapura (UTC+9)</option>
+                    </select>
+                    <div class="help-text">Pilih zona waktu sesuai lokasi perangkat</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Database Configuration -->
+              <div class="section-group">
+                <div class="section-title">
+                  <i class="bi bi-database"></i> Database Configuration
+                </div>
+                <div class="row-form">
+                  <div class="form-group">
+                    <label class="form-label">DB Host</label>
+                    <input type="text" class="form-control" name="DB_HOST" id="DB_HOST">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">DB Port</label>
+                    <input type="number" class="form-control" name="DB_PORT" id="DB_PORT">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">DB Name</label>
+                    <input type="text" class="form-control" name="DB_NAME" id="DB_NAME">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">DB User</label>
+                    <input type="text" class="form-control" name="DB_USER" id="DB_USER">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">DB Password</label>
+                    <input type="password" class="form-control" name="DB_PASSWORD" id="DB_PASSWORD">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Sensor Devices -->
+              <div class="section-group">
+                <div class="section-title">
+                  <i class="bi bi-cpu"></i> Sensor Devices
+                </div>
+
+                <!-- AT500 -->
+                <div style="margin-bottom: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 6px;">
+                  <h6 style="color: var(--primary-dark); margin-bottom: 12px;">AT500</h6>
+                  <div class="row-form">
+                    <div class="form-group">
+                      <label class="form-label">Status</label>
+                      <select class="form-control" name="AT500_STATUS" id="AT500_STATUS">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Port</label>
+                      <input type="text" class="form-control" name="AT500_PORT" id="AT500_PORT">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- RT200 -->
+                <div style="margin-bottom: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 6px;">
+                  <h6 style="color: var(--primary-dark); margin-bottom: 12px;">RT200</h6>
+                  <div class="row-form">
+                    <div class="form-group">
+                      <label class="form-label">Status</label>
+                      <select class="form-control" name="RT200_STATUS" id="RT200_STATUS">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Port</label>
+                      <input type="text" class="form-control" name="RT200_PORT" id="RT200_PORT">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- SEM5096 -->
+                <div style="margin-bottom: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 6px;">
+                  <h6 style="color: var(--primary-dark); margin-bottom: 12px;">SEM5096</h6>
+                  <div class="row-form">
+                    <div class="form-group">
+                      <label class="form-label">Status</label>
+                      <select class="form-control" name="SEM5096_STATUS" id="SEM5096_STATUS">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Port</label>
+                      <input type="text" class="form-control" name="SEM5096_PORT" id="SEM5096_PORT">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- MACE -->
+                <div style="margin-bottom: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 6px;">
+                  <h6 style="color: var(--primary-dark); margin-bottom: 12px;">MACE</h6>
+                  <div class="row-form">
+                    <div class="form-group">
+                      <label class="form-label">Status</label>
+                      <select class="form-control" name="MACE_STATUS" id="MACE_STATUS">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Port</label>
+                      <input type="text" class="form-control" name="MACE_PORT" id="MACE_PORT">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ISCAN -->
+                <div style="margin-bottom: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 6px;">
+                  <h6 style="color: var(--primary-dark); margin-bottom: 12px;">ISCAN</h6>
+                  <div class="row-form">
+                    <div class="form-group">
+                      <label class="form-label">Status</label>
+                      <select class="form-control" name="ISCAN_STATUS" id="ISCAN_STATUS">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Port</label>
+                      <input type="text" class="form-control" name="ISCAN_PORT" id="ISCAN_PORT">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- LTNC -->
+                <div style="margin-bottom: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 6px;">
+                  <h6 style="color: var(--primary-dark); margin-bottom: 12px;">LTNC</h6>
+                  <div class="row-form">
+                    <div class="form-group">
+                      <label class="form-label">Status</label>
+                      <select class="form-control" name="LTNC_STATUS" id="LTNC_STATUS">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Port</label>
+                      <input type="text" class="form-control" name="LTNC_PORT" id="LTNC_PORT">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- SPECTRO -->
+                <div style="margin-bottom: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 6px;">
+                  <h6 style="color: var(--primary-dark); margin-bottom: 12px;">SPECTRO</h6>
+                  <div class="row-form">
+                    <div class="form-group">
+                      <label class="form-label">Status</label>
+                      <select class="form-control" name="SPECTRO_STATUS" id="SPECTRO_STATUS">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">IP Address</label>
+                      <input type="text" class="form-control" name="SPECTRO_IP" id="SPECTRO_IP">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Port</label>
+                      <input type="number" class="form-control" name="SPECTRO_PORT" id="SPECTRO_PORT">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- CONTLYTE -->
+                <div style="margin-bottom: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 6px;">
+                  <h6 style="color: var(--primary-dark); margin-bottom: 12px;">CONTLYTE</h6>
+                  <div class="row-form">
+                    <div class="form-group">
+                      <label class="form-label">Status</label>
+                      <select class="form-control" name="CONTLYTE_STATUS" id="CONTLYTE_STATUS">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Port</label>
+                      <input type="text" class="form-control" name="CONTLYTE_PORT" id="CONTLYTE_PORT">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- DS502 -->
+                <div style="margin-bottom: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 6px;">
+                  <h6 style="color: var(--primary-dark); margin-bottom: 12px;">DS502</h6>
+                  <div class="row-form">
+                    <div class="form-group">
+                      <label class="form-label">Status</label>
+                      <select class="form-control" name="DS502_STATUS" id="DS502_STATUS">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Port</label>
+                      <input type="text" class="form-control" name="DS502_PORT" id="DS502_PORT">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ARG314 (GPIO) -->
+                <div style="margin-bottom: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 6px;">
+                  <h6 style="color: var(--primary-dark); margin-bottom: 12px;">ARG314 (GPIO Rain Sensor)</h6>
+                  <div class="row-form">
+                    <div class="form-group">
+                      <label class="form-label">Status</label>
+                      <select class="form-control" name="ARG314_STATUS" id="ARG314_STATUS">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Rain Sensor Pin (BCM)</label>
+                      <input type="number" class="form-control" name="RAIN_SENSOR_PIN" id="RAIN_SENSOR_PIN">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Resolution (mm per tipping)</label>
+                      <input type="number" step="0.001" class="form-control" name="RESOLUTION" id="RESOLUTION">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Debounce (ms)</label>
+                      <input type="number" class="form-control" name="DEBOUNCE_MS" id="DEBOUNCE_MS">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Demo Mode</label>
+                      <select class="form-control" name="DEMO_MODE" id="DEMO_MODE">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">GPIO Module</label>
+                      <select class="form-control" name="GPIO_MODULE" id="GPIO_MODULE">
+                        <option value="Rpi.GPIO">Rpi.GPIO</option>
+                        <option value="lgpio">lgpio</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Sensor Interval -->
+                <div class="form-group">
+                  <label class="form-label">Sensor Read Delay (minutes)</label>
+                  <input type="number" class="form-control" name="DELAY" id="DELAY">
+                  <div class="help-text">Interval pembacaan sensor dalam menit</div>
+                </div>
+              </div>
+
+              <!-- KLHK API Configuration -->
+              <div class="section-group">
+                <div class="section-title">
+                  <i class="bi bi-cloud-upload"></i> KLHK API Configuration
+                </div>
+                <div class="row-form">
+                  <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select class="form-control" name="KLHK_STATUS" id="KLHK_STATUS">
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">API URL</label>
+                    <input type="text" class="form-control" name="KLHK_API_URL" id="KLHK_API_URL">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Token URL</label>
+                    <input type="text" class="form-control" name="KLHK_TOKEN_URL" id="KLHK_TOKEN_URL">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">UID</label>
+                    <input type="text" class="form-control" name="KLHK_UID" id="KLHK_UID">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Fields (comma-separated)</label>
+                    <input type="text" class="form-control" name="KLHK_FIELDS" id="KLHK_FIELDS">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Max Retry Duplicate</label>
+                    <input type="number" class="form-control" name="KLHK_MAX_DUP_RETRY" id="KLHK_MAX_DUP_RETRY">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Target Minute</label>
+                    <input type="number" class="form-control" name="KLHK_TARGET_MINUTE" id="KLHK_TARGET_MINUTE">
+                  </div>
+                </div>
+              </div>
+
+              <!-- HAS API Configuration -->
+              <div class="section-group">
+                <div class="section-title">
+                  <i class="bi bi-cloud-upload"></i> HAS API Configuration
+                </div>
+                <div class="row-form">
+                  <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select class="form-control" name="HAS_STATUS" id="HAS_STATUS">
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">API URL</label>
+                    <input type="text" class="form-control" name="HAS_API_URL" id="HAS_API_URL">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Token</label>
+                    <input type="password" class="form-control" name="HAS_TOKEN_API" id="HAS_TOKEN_API">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Fields (comma-separated)</label>
+                    <input type="text" class="form-control" name="HAS_FIELDS" id="HAS_FIELDS">
+                  </div>
+                </div>
+                <div class="row-form">
+                  <div class="form-group">
+                    <label class="form-label">HAS Logs API URL</label>
+                    <input type="text" class="form-control" name="HAS_LOGS_API_URL" id="HAS_LOGS_API_URL">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">HAS Logs Token</label>
+                    <input type="password" class="form-control" name="HAS_LOGS_TOKEN_API" id="HAS_LOGS_TOKEN_API">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Web Configuration -->
+              <div class="section-group">
+                <div class="section-title">
+                  <i class="bi bi-globe"></i> Web Configuration
+                </div>
+                <div class="row-form">
+                  <div class="form-group">
+                    <label class="form-label">Web Title</label>
+                    <input type="text" class="form-control" name="WEB_TITLE" id="WEB_TITLE">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Web Name</label>
+                    <input type="text" class="form-control" name="WEB_NAME" id="WEB_NAME">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Device ID</label>
+                    <input type="text" class="form-control" name="DEVICE_ID" id="DEVICE_ID">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Location Name</label>
+                    <input type="text" class="form-control" name="LOCATION_NAME" id="LOCATION_NAME">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Software Version</label>
+                    <input type="text" class="form-control" name="SOFTWARE_VERSION" id="SOFTWARE_VERSION">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Gap Web (minutes)</label>
+                    <input type="number" class="form-control" name="GAP_WEB" id="GAP_WEB">
+                  </div>
+                </div>
+
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                  <h6 style="color: var(--primary-dark); margin-bottom: 12px;">Geolocation</h6>
+                  <div class="row-form">
+                    <div class="form-group">
+                      <label class="form-label">Latitude</label>
+                      <input type="number" step="0.0001" class="form-control" name="GEO_LATITUDE" id="GEO_LATITUDE">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Longitude</label>
+                      <input type="number" step="0.0001" class="form-control" name="GEO_LONGITUDE" id="GEO_LONGITUDE">
+                    </div>
+                  </div>
+                </div>
+
+                <div style="margin-top: 15px;">
+                  <h6 style="color: var(--primary-dark); margin-bottom: 12px;">Display Parameters</h6>
+                  <div class="form-group">
+                    <label class="form-label">Parameters (comma-separated)</label>
+                    <input type="text" class="form-control" name="PARAMETERS" id="PARAMETERS" style="font-size: 12px;">
+                    <div class="help-text">Contoh: pH,cod,tss,nh3n,flow,wtemp,orp,turb,tds,conduct,do,depth,bod,wpress</div>
+                  </div>
+                </div>
+              </div>
+
+            </form>
+          </div>
+
+          <div class="config-actions">
+            <button type="button" class="btn-reset" id="resetBtn">
+              <i class="bi bi-arrow-counterclockwise"></i> Reset
+            </button>
+            <button type="button" class="btn-save" id="saveBtn">
+              <i class="bi bi-check-circle"></i> Save Configuration
+            </button>
+            <button type="button" class="btn btn-danger" id="rebootNowBtn" style="margin-left: 10px; padding: 10px 20px; border-radius: 6px; display: none;" onclick="rebootSystem()">
+              <i class="bi bi-exclamation-circle"></i> Reboot Now
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Reboot system function
+    async function rebootSystem() {
+      if (confirm('⚠️ Sistem akan di-reboot. Apakah Anda yakin?\n\nKoneksi akan terputus selama beberapa saat.')) {
+        try {
+          const response = await fetch('/api/system/restart', {
+            method: 'POST',
+            credentials: 'include'
+          });
+          
+          if (response.ok) {
+            const alertContainer = document.getElementById('alert-container');
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-success';
+            alert.innerHTML = '<i class="bi bi-check-circle"></i><span>Sistem akan di-reboot dalam beberapa detik...</span>';
+            alertContainer.innerHTML = '';
+            alertContainer.appendChild(alert);
+            
+            // Hide reboot warning and button after successful reboot command
+            const rebootWarning = document.getElementById('rebootWarning');
+            const rebootNowBtn = document.getElementById('rebootNowBtn');
+            if (rebootWarning) rebootWarning.style.display = 'none';
+            if (rebootNowBtn) rebootNowBtn.style.display = 'none';
+            
+            // Redirect to login after a few seconds
+            setTimeout(() => {
+              window.location.href = '/config-login.html';
+            }, 3000);
+          } else {
+            alert('Gagal melakukan reboot. Silahkan coba lagi.');
+          }
+        } catch (error) {
+          console.error('Reboot error:', error);
+          alert('Error: ' + error.message);
+        }
+      }
+    }
+
+    // Logout function
+    async function logout() {
+      try {
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          window.location.href = '/config-login.html';
+        }
+      } catch (error) {
+        console.error('Logout error:', error);
+        window.location.href = '/config-login.html';
+      }
+    }
+
+    // Check authentication before loading page
+    async function checkAuthentication() {
+      try {
+        const response = await fetch('/api/auth/status');
+        const data = await response.json();
+        
+        if (!data.authenticated) {
+          // Not authenticated, redirect to login
+          window.location.href = '/config-login.html';
+          return false;
+        }
+        
+        // Display username
+        const userInfo = document.getElementById('userInfo');
+        if (userInfo && data.username) {
+          userInfo.textContent = `👤 ${data.username}`;
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Auth check error:', error);
+        window.location.href = '/config-login.html';
+        return false;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', async function () {
+      // Check authentication first
+      const authenticated = await checkAuthentication();
+      if (!authenticated) return;
+
+      const form = document.getElementById('configForm');
+      const saveBtn = document.getElementById('saveBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const alertContainer = document.getElementById('alert-container');
+      const statusBadge = document.getElementById('statusBadge');
+
+      // Update current time
+      function updateTime() {
+        const now = new Date();
+        document.getElementById('currentTime').textContent = now.toLocaleTimeString();
+      }
+      setInterval(updateTime, 1000);
+      updateTime();
+
+      // Show alert
+      function showAlert(message, type = 'success') {
+        const alertClass = type === 'success' ? 'alert-success' : type === 'error' ? 'alert-error' : 'alert-info';
+        const icon = type === 'success' ? 'bi-check-circle' : type === 'error' ? 'bi-exclamation-triangle' : 'bi-info-circle';
+        
+        const alert = document.createElement('div');
+        alert.className = `alert ${alertClass}`;
+        alert.innerHTML = `<i class="bi ${icon}"></i><span>${message}</span>`;
+        
+        alertContainer.innerHTML = '';
+        alertContainer.appendChild(alert);
+        
+        if (type === 'success') {
+          setTimeout(() => alert.remove(), 3000);
+        }
+      }
+
+      // Store original config for comparison
+      let originalConfig = {};
+
+      // Show reboot warning
+      function showRebootWarning() {
+        const rebootWarning = document.getElementById('rebootWarning');
+        const rebootNowBtn = document.getElementById('rebootNowBtn');
+        if (rebootWarning) rebootWarning.style.display = 'flex';
+        if (rebootNowBtn) rebootNowBtn.style.display = 'block';
+      }
+
+      // Hide reboot warning
+      function hideRebootWarning() {
+        const rebootWarning = document.getElementById('rebootWarning');
+        const rebootNowBtn = document.getElementById('rebootNowBtn');
+        if (rebootWarning) rebootWarning.style.display = 'none';
+        if (rebootNowBtn) rebootNowBtn.style.display = 'none';
+      }
+
+      // Load config
+      function loadConfig() {
+        statusBadge.textContent = 'Loading...';
+        fetch('/api/config/read')
+          .then(res => res.json())
+          .then(data => {
+            Object.keys(data).forEach(key => {
+              const field = document.getElementById(key);
+              if (field) {
+                field.value = data[key];
+              }
+            });
+            // Store original config for comparison
+            originalConfig = JSON.parse(JSON.stringify(data));
+            statusBadge.textContent = 'Ready';
+            hideRebootWarning();
+            showAlert('Configuration loaded successfully', 'info');
+          })
+          .catch(error => {
+            console.error('Error loading config:', error);
+            showAlert('Failed to load configuration', 'error');
+            statusBadge.textContent = 'Error';
+          });
+      }
+
+      // Save config
+      saveBtn.addEventListener('click', function () {
+        const formData = new FormData(form);
+        const config = {};
+        
+        formData.forEach((value, key) => {
+          config[key] = value;
+        });
+
+        statusBadge.textContent = 'Saving...';
+        saveBtn.disabled = true;
+
+        fetch('/api/config/write', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(config)
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            showAlert('✅ Configuration saved successfully! ' + data.message, 'success');
+            statusBadge.textContent = 'Saved';
+            // Show reboot warning
+            showRebootWarning();
+            // Update original config
+            originalConfig = JSON.parse(JSON.stringify(config));
+          } else {
+            showAlert(data.message || 'Failed to save configuration', 'error');
+            statusBadge.textContent = 'Ready';
+          }
+        })
+        .catch(error => {
+          console.error('Error saving config:', error);
+          showAlert('Failed to save configuration: ' + error.message, 'error');
+          statusBadge.textContent = 'Ready';
+        })
+        .finally(() => {
+          saveBtn.disabled = false;
+        });
+      });
+
+      // Reset form
+      resetBtn.addEventListener('click', function () {
+        if (confirm('Are you sure you want to reload the configuration from file?')) {
+          loadConfig();
+        }
+      });
+
+      // Load config on page load
+      loadConfig();
+    });
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Log Viewer - Pro</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- External Libraries -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+
+    <style>
+        /* =========================================
+           CSS VARIABLES & RESET
+           ========================================= */
+        :root {
+            --bg-body: #0f172a;
+            --bg-panel: #1e293b;
+            --bg-terminal: #0d1117;
+            --border: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --header-height: 64px;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; /* Prevent body scroll, handle inside components */
+            margin: 0;
+        }
+
+        /* =========================================
+           HEADER
+           ========================================= */
+        .app-header {
+            height: var(--header-height);
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.5rem;
+            flex-shrink: 0;
+            z-index: 1000;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .header-brand i {
+            color: var(--primary);
+            font-size: 1.25rem;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .btn-icon {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .btn-icon:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        /* =========================================
+           MAIN LAYOUT
+           ========================================= */
+        .main-layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Sidebar (Desktop) */
+        .sidebar {
+            width: 260px;
+            background-color: var(--bg-panel);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem 1rem;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            position: static;
+        }
+
+        /* Mobile Offcanvas Sidebar */
+        .sidebar.offcanvas {
+            width: 280px;
+            max-width: 90vw;
+            background-color: var(--bg-panel);
+            border: none;
+        }
+
+        .sidebar.offcanvas.offcanvas-start {
+            left: 0;
+        }
+
+        /* Remove Bootstrap offcanvas styling for better control */
+        .sidebar.offcanvas[data-bs-scroll="true"] {
+            overflow-y: auto;
+        }
+
+        .sidebar-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            font-weight: 600;
+            padding-left: 0.75rem;
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            width: 100%;
+            padding: 0.6rem 0.75rem;
+            margin-bottom: 0.25rem;
+            border-radius: 6px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+        }
+
+        .nav-btn.active {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--primary);
+        }
+
+        .nav-btn i {
+            font-size: 1.1rem;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Terminal Area */
+        .terminal-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-terminal);
+            position: relative;
+            min-width: 0; /* Fix flex item overflow */
+        }
+
+        .terminal-header {
+            padding: 0.75rem 1rem;
+            background: rgba(30, 41, 59, 0.5);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .terminal-info h3 {
+            font-size: 0.95rem;
+            margin: 0;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .terminal-status {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--success);
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+        }
+
+        .status-dot.paused {
+            background-color: var(--warning);
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+        }
+
+        /* Log Viewer */
+        .log-viewer {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            scroll-behavior: smooth;
+        }
+
+        /* Log Lines */
+        .log-line {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 0.25rem;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            padding-bottom: 0.1rem;
+        }
+        
+        .log-time {
+            color: var(--text-secondary);
+            flex-shrink: 0;
+            user-select: none;
+        }
+
+        .log-level {
+            font-weight: bold;
+            flex-shrink: 0;
+            width: 70px;
+            text-align: center;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            padding: 1px 4px;
+            height: fit-content;
+        }
+
+        .level-info { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .level-warn { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .level-error { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .level-success { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+
+        .log-msg {
+            color: var(--text-primary);
+            word-break: break-all;
+        }
+
+        /* Terminal Controls Footer */
+        .terminal-footer {
+            padding: 0.5rem 1rem;
+            background: var(--bg-panel);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-control {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: white;
+        }
+
+        .btn-secondary-dark { background: #334155; color: #cbd5e1; }
+        .btn-secondary-dark:hover { background: #475569; }
+
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+
+        .btn-warning { background: var(--warning); color: #0f172a; }
+        .btn-warning:hover { background: #d97706; }
+
+        .btn-success { background: var(--success); color: #0f172a; }
+        .btn-success:hover { background: #059669; }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-terminal); }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* =========================================
+           RESPONSIVE DESIGN (MOBILE)
+           ========================================= */
+        /* Desktop sidebar always visible on LG+ */
+        @media (min-width: 992px) {
+            .sidebar.d-lg-flex {
+                display: flex !important;
+                position: static;
+            }
+            
+            .sidebar.offcanvas {
+                display: none !important;
+            }
+        }
+
+        /* Mobile: hide desktop sidebar, show offcanvas */
+        @media (max-width: 991.98px) {
+            .sidebar.d-lg-flex {
+                display: none !important;
+            }
+            
+            .sidebar.offcanvas {
+                display: flex;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                max-width: 280px;
+                z-index: 1050;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            
+            .sidebar.offcanvas.show {
+                transform: translateX(0);
+            }
+
+            .app-header {
+                padding: 0 1rem;
+            }
+
+            .terminal-footer {
+                flex-wrap: wrap;
+            }
+
+            .terminal-footer .control-group {
+                width: 100%;
+                justify-content: space-between;
+                margin-bottom: 0.5rem;
+            }
+
+            .btn-control {
+                flex: 1;
+                justify-content: center;
+                padding: 0.5rem;
+            }
+
+            .btn-control span {
+                display: inline;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============== HEADER ============== -->
+    <header class="app-header">
+        <div class="header-brand">
+            <button class="btn-icon d-lg-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas">
+                <i class="bi bi-list"></i>
+            </button>
+            <i class="bi bi-activity"></i>
+            <span>API Monitor</span>
+        </div>
+        <div class="header-actions">
+            <div class="user-profile d-none d-sm-flex">
+                <div class="user-avatar">A</div>
+                <span class="text-secondary">Admin</span>
+            </div>
+            <button class="btn-icon" onclick="logout()" title="Logout">
+                <i class="bi bi-box-arrow-right"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- ============== MAIN CONTENT ============== -->
+    <div class="main-layout">
+        
+        <!-- Desktop Sidebar (Visible on LG+) -->
+        <div class="sidebar d-none d-lg-flex">
+            <div class="w-100 d-flex flex-column h-100">
+                <div class="p-3 d-flex flex-column h-100">
+                    <div class="sidebar-title">Menu Logs</div>
+                    <nav class="d-flex flex-column gap-1">
+                        <button class="nav-btn active" onclick="switchLog('main', this)">
+                            <i class="bi bi-terminal"></i> Main Log
+                        </button>
+                        <button class="nav-btn" onclick="switchLog('send', this)">
+                            <i class="bi bi-send"></i> Send Log
+                        </button>
+                        <button class="nav-btn" onclick="switchLog('retry', this)">
+                            <i class="bi bi-arrow-repeat"></i> Retry Log
+                        </button>
+                        <button class="nav-btn" onclick="switchLog('has-send', this)">
+                            <i class="bi bi-cloud-check"></i> HAS Send Log
+                        </button>
+                        <button class="nav-btn" onclick="window.location.href='/dashboard'">
+                            <i class="bi bi-speedometer2"></i> Back Dashboard
+                        </button>
+                    </nav>
+
+                    <div class="sidebar-footer mt-auto">
+                        <div class="sidebar-title">Statistik</div>
+                        <div class="d-flex justify-content-between mb-2 text-secondary small">
+                            <span>Lines:</span>
+                            <span id="line-count" class="text-white">0</span>
+                        </div>
+                        <div class="d-flex justify-content-between text-secondary small">
+                            <span>Refresh Rate:</span>
+                            <span class="text-white">1m</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Offcanvas Sidebar (Visible on mobile) -->
+        <div class="sidebar offcanvas offcanvas-start d-lg-none" tabindex="-1" id="sidebarOffcanvas">
+            <div class="offcanvas-header border-bottom border-secondary">
+                <h5 class="offcanvas-title text-white"><i class="bi bi-folder me-2"></i>Kategori Log</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            <div class="offcanvas-body flex-column d-flex p-0">
+                <div class="p-3 d-flex flex-column h-100">
+                    <div class="sidebar-title">Menu Logs</div>
+                    <nav class="d-flex flex-column gap-1">
+                        <button class="nav-btn active" onclick="switchLog('main', this)">
+                            <i class="bi bi-terminal"></i> Main Log
+                        </button>
+                        <button class="nav-btn" onclick="switchLog('send', this)">
+                            <i class="bi bi-send"></i> Send Log
+                        </button>
+                        <button class="nav-btn" onclick="switchLog('retry', this)">
+                            <i class="bi bi-arrow-repeat"></i> Retry Log
+                        </button>
+                        <button class="nav-btn" onclick="switchLog('has-send', this)">
+                            <i class="bi bi-cloud-check"></i> HAS Send Log
+                        </button>
+                    </nav>
+
+                    <div class="sidebar-footer mt-auto">
+                        <div class="sidebar-title">Statistik</div>
+                        <div class="d-flex justify-content-between mb-2 text-secondary small">
+                            <span>Lines:</span>
+                            <span id="line-count-mobile" class="text-white">0</span>
+                        </div>
+                        <div class="d-flex justify-content-between text-secondary small">
+                            <span>Refresh Rate:</span>
+                            <span class="text-white">2s</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Terminal Area -->
+        <div class="terminal-container">
+            
+            <!-- Terminal Header -->
+            <div class="terminal-header">
+                <div class="terminal-info">
+                    <h3 id="current-log-title">
+                        <i class="bi bi-terminal-fill text-primary"></i> 
+                        <span id="log-title-text">Main Log</span>
+                    </h3>
+                </div>
+                <div class="terminal-status">
+                    <div class="status-dot" id="connection-dot"></div>
+                    <span id="connection-text">Live Connected</span>
+                </div>
+            </div>
+
+            <!-- Terminal Output -->
+            <div id="log-viewer" class="log-viewer">
+                <!-- Logs will be injected here via JS -->
+                <div class="text-secondary text-center mt-5">
+                    <i class="bi bi-arrow-clockwise spin me-2"></i> Menunggu data...
+                </div>
+            </div>
+
+            <!-- Auto Scroll Toggle (Floating) -->
+            <div style="position: absolute; bottom: 80px; right: 20px; z-index: 10;">
+                <button class="btn btn-secondary-dark rounded-pill py-2 px-3 shadow" id="autoScrollBtn" onclick="toggleAutoScroll()">
+                    <i class="bi bi-pin-angle-fill"></i> Auto-Scroll
+                </button>
+            </div>
+
+            <!-- Terminal Footer Controls -->
+            <div class="terminal-footer">
+                <div class="control-group">
+                    <button class="btn-control btn-secondary-dark" onclick="copyLogContent()" title="Salin Log">
+                        <i class="bi bi-clipboard"></i> <span>Copy</span>
+                    </button>
+                    <button class="btn-control btn-secondary-dark" onclick="downloadLogContent()" title="Unduh Log">
+                        <i class="bi bi-download"></i> <span>Download</span>
+                    </button>
+                    <button class="btn-control btn-secondary-dark" onclick="clearLogs()" title="Bersihkan Layar">
+                        <i class="bi bi-trash"></i> <span>Clear</span>
+                    </button>
+                </div>
+                <div class="control-group">
+                    <button id="pauseBtn" class="btn-control btn-warning" onclick="togglePause()">
+                        <i class="bi bi-pause-fill"></i> <span>Pause</span>
+                    </button>
+                    <button class="btn-control btn-primary" onclick="refreshLogContent()">
+                        <i class="bi bi-arrow-clockwise"></i> <span>Refresh</span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ============== SCRIPTS ============== -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        // ==========================================
+        // APP STATE & CONFIG
+        // ==========================================
+        const state = {
+            currentLog: 'main',
+            isPaused: false,
+            autoScroll: true,
+            logs: [],
+            timer: null,
+            maxLogs: 1000 // Max lines to keep in memory/DOM
+        };
+
+        const DOM = {
+            viewer: document.getElementById('log-viewer'),
+            title: document.getElementById('log-title-text'),
+            lineCount: document.getElementById('line-count'),
+            lineCountMobile: document.getElementById('line-count-mobile'),
+            pauseBtn: document.getElementById('pauseBtn'),
+            statusDot: document.getElementById('connection-dot'),
+            statusText: document.getElementById('connection-text'),
+            autoScrollBtn: document.getElementById('autoScrollBtn')
+        };
+
+        // ==========================================
+        // LOG LEVEL DETECTION
+        // ==========================================
+        function detectLogLevel(message) {
+            const msg = message.toUpperCase();
+            if (msg.includes('[ERROR]') || msg.includes('ERROR') || msg.includes('CRITICAL')) {
+                return 'error';
+            } else if (msg.includes('[WARN]') || msg.includes('WARNING')) {
+                return 'warn';
+            } else if (msg.includes('[SUCCESS]') || msg.includes('SUCCESS')) {
+                return 'success';
+            } else if (msg.includes('[INFO]') || msg.includes('INFO')) {
+                return 'info';
+            }
+            return 'info'; // Default
+        }
+
+        // ==========================================
+        // BACKEND API FUNCTIONS
+        // ==========================================
+        async function loadLogsFromBackend() {
+            try {
+                // Update status
+                DOM.statusDot.classList.add('paused');
+                DOM.statusText.innerText = "Loading...";
+                DOM.statusText.classList.add('text-warning');
+
+                // Fetch logs from backend
+                const response = await fetch(`/api/logs/${state.currentLog}`);
+                
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        // Redirect to login if unauthorized
+                        window.location.href = '/login.html';
+                        return;
+                    }
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    // Clear existing logs
+                    state.logs = [];
+                    DOM.viewer.innerHTML = '';
+
+                    // Process each log entry from backend
+                    result.data.forEach((logEntry) => {
+                        const logData = {
+                            time: logEntry.timestamp || new Date().toISOString(),
+                            level: detectLogLevel(logEntry.message),
+                            msg: logEntry.message,
+                            no: logEntry.no
+                        };
+                        addLogEntry(logData);
+                    });
+
+                    // Update status
+                    DOM.statusDot.classList.remove('paused');
+                    DOM.statusText.innerText = "Live Connected";
+                    DOM.statusText.classList.remove('text-warning');
+
+                    // Auto-scroll to bottom
+                    if (state.autoScroll) {
+                        setTimeout(() => {
+                            DOM.viewer.scrollTop = DOM.viewer.scrollHeight;
+                        }, 100);
+                    }
+                } else {
+                    const errorMsg = result.message || result.error || 'Unknown error';
+                    DOM.viewer.innerHTML = `<span style="color: #f44336;">Error: ${errorMsg}</span>`;
+                    DOM.statusDot.classList.add('paused');
+                    DOM.statusText.innerText = "Error";
+                }
+            } catch (error) {
+                console.error('Error loading logs:', error);
+                DOM.viewer.innerHTML = `<span style="color: #f44336;">Error: ${error.message}</span>`;
+                DOM.statusDot.classList.add('paused');
+                DOM.statusText.innerText = "Connection Error";
+                DOM.statusText.classList.add('text-warning');
+            }
+        }
+
+        // ==========================================
+        // CORE FUNCTIONS
+        // ==========================================
+
+        function init() {
+            // Load initial logs from backend
+            loadLogsFromBackend();
+
+            // Set up auto-refresh interval (every 1 minute)
+            state.timer = setInterval(() => {
+                if (!state.isPaused) {
+                    loadLogsFromBackend();
+                }
+            }, 60000);
+
+            updateLineCount();
+        }
+
+        function addLogEntry(logData) {
+            state.logs.push(logData);
+            
+            // Limit memory usage
+            if (state.logs.length > state.maxLogs) {
+                state.logs.shift();
+            }
+
+            // Render Logic
+            const div = document.createElement('div');
+            div.className = 'log-line';
+
+            div.innerHTML = `
+                <span class="log-level level-${logData.level}">${logData.level.toUpperCase()}</span>
+                <span class="log-msg">${logData.msg}</span>
+            `;
+
+            DOM.viewer.appendChild(div);
+
+            // Auto Scroll Logic
+            if (state.autoScroll) {
+                DOM.viewer.scrollTop = DOM.viewer.scrollHeight;
+            }
+
+            updateLineCount();
+        }
+
+        function switchLog(logType, btnElement) {
+            state.currentLog = logType;
+            DOM.title.innerText = btnElement ? btnElement.innerText.trim() : logType.toUpperCase() + " LOG";
+            
+            // Update Active Class on ALL sidebar buttons
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            
+            // Find and activate the matching button in both sidebars
+            document.querySelectorAll(`.nav-btn[onclick*="'${logType}'"]`).forEach(b => {
+                b.classList.add('active');
+            });
+
+            // Close mobile offcanvas if open
+            const offcanvasEl = document.getElementById('sidebarOffcanvas');
+            if (offcanvasEl) {
+                const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl);
+                if (bsOffcanvas) {
+                    bsOffcanvas.hide();
+                }
+            }
+
+            // Clear current view and load from backend
+            DOM.viewer.innerHTML = '<div class="text-secondary text-center mt-5"><i class="bi bi-arrow-clockwise spin me-2"></i> Loading logs...</div>';
+            state.logs = [];
+            updateLineCount();
+            
+            // Load logs from backend
+            loadLogsFromBackend().then(() => {
+                // Show success toast
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000,
+                    timerProgressBar: true,
+                    background: '#1e293b',
+                    color: '#fff'
+                });
+                Toast.fire({ icon: 'success', title: `Loaded ${state.currentLog} logs` });
+            });
+        }
+
+        function clearLogs() {
+            DOM.viewer.innerHTML = '';
+            state.logs = [];
+            updateLineCount();
+        }
+
+        function updateLineCount() {
+            DOM.lineCount.innerText = state.logs.length;
+            if (DOM.lineCountMobile) {
+                DOM.lineCountMobile.innerText = state.logs.length;
+            }
+        }
+
+        // ==========================================
+        // CONTROLS & UTILITIES
+        // ==========================================
+
+        function togglePause() {
+            state.isPaused = !state.isPaused;
+            if (state.isPaused) {
+                DOM.pauseBtn.innerHTML = '<i class="bi bi-play-fill"></i> <span>Resume</span>';
+                DOM.pauseBtn.classList.replace('btn-warning', 'btn-success');
+                DOM.statusDot.classList.add('paused');
+                DOM.statusText.innerText = "Paused";
+                DOM.statusText.classList.add('text-warning');
+            } else {
+                DOM.pauseBtn.innerHTML = '<i class="bi bi-pause-fill"></i> <span>Pause</span>';
+                DOM.pauseBtn.classList.replace('btn-success', 'btn-warning');
+                DOM.statusDot.classList.remove('paused');
+                DOM.statusText.innerText = "Live Connected";
+                DOM.statusText.classList.remove('text-warning');
+            }
+        }
+
+        function toggleAutoScroll() {
+            state.autoScroll = !state.autoScroll;
+            if(state.autoScroll) {
+                DOM.autoScrollBtn.classList.add('btn-primary');
+                DOM.autoScrollBtn.classList.remove('btn-secondary-dark');
+                DOM.autoScrollBtn.innerHTML = '<i class="bi bi-pin-angle-fill"></i> Auto-Scroll';
+            } else {
+                DOM.autoScrollBtn.classList.remove('btn-primary');
+                DOM.autoScrollBtn.classList.add('btn-secondary-dark');
+                DOM.autoScrollBtn.innerHTML = '<i class="bi bi-pin-angle"></i> Scrolled';
+            }
+        }
+
+        function refreshLogContent() {
+            // Visual feedback
+            const btn = document.querySelector('[onclick="refreshLogContent()"]');
+            if (btn) {
+                const icon = btn.querySelector('i');
+                if (icon) {
+                    icon.classList.add('spin');
+                }
+                btn.disabled = true;
+            }
+
+            // Load from backend
+            loadLogsFromBackend().then(() => {
+                if (btn) {
+                    const icon = btn.querySelector('i');
+                    if (icon) {
+                        icon.classList.remove('spin');
+                    }
+                    btn.disabled = false;
+                }
+
+                Swal.fire({
+                    title: 'Refreshed',
+                    text: 'Logs synchronized from backend.',
+                    icon: 'success',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 1500,
+                    background: '#1e293b',
+                    color: '#fff'
+                });
+            }).catch(() => {
+                if (btn) {
+                    const icon = btn.querySelector('i');
+                    if (icon) {
+                        icon.classList.remove('spin');
+                    }
+                    btn.disabled = false;
+                }
+            });
+        }
+
+        function copyLogContent() {
+            const text = state.logs.map(l => `[${l.time}] [${l.level.toUpperCase()}] ${l.msg}`).join('\n');
+            
+            navigator.clipboard.writeText(text).then(() => {
+                Swal.fire({
+                    title: 'Tersalin!',
+                    text: `${state.logs.length} baris log disalin.`,
+                    icon: 'success',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000,
+                    background: '#1e293b',
+                    color: '#fff'
+                });
+            });
+        }
+
+        function downloadLogContent() {
+            const text = state.logs.map(l => `[${l.time}] [${l.level.toUpperCase()}] ${l.msg}`).join('\n');
+            const timestamp = new Date().toISOString().split('T')[0];
+            const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            
+            link.href = url;
+            link.download = `log-${state.currentLog}-${timestamp}.txt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function logout() {
+            Swal.fire({
+                title: 'Keluar?',
+                text: "Anda harus login ulang untuk melihat logs.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3b82f6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Ya, Logout',
+                background: '#1e293b',
+                color: '#fff'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Call logout API
+                    fetch('/api/logout', { method: 'POST' })
+                        .then(() => {
+                            window.location.href = '/login.html';
+                        })
+                        .catch(() => {
+                            // Fallback if API fails
+                            window.location.href = '/login.html';
+                        });
+                }
+            });
+        }
+
+        // Helper for Spin Animation
+        const styleSheet = document.createElement("style");
+        styleSheet.innerText = `
+            .spin { animation: spin 1s linear infinite; }
+            .spin-anim { animation: spin 0.5s linear infinite; }
+            @keyframes spin { 100% { transform: rotate(360deg); } }
+        `;
+        document.head.appendChild(styleSheet);
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', init);
+
+    </script>
+</body>
+</html>

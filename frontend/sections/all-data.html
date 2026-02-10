@@ -1,0 +1,52 @@
+<!-- ALL DATA SECTION -->
+<h2 class="page-title">Semua Data</h2>
+    <p class="page-subtitle">Data dari tabel database dan tabel tmp (UNION ALL) dengan 1 hari default</p>
+
+    <!-- Filter -->
+    <div class="filter-group">
+        <div>
+            <label>Tanggal Mulai</label>
+            <input type="date" id="filter-all-from" />
+        </div>
+        <div>
+            <label>Tanggal Akhir</label>
+            <input type="date" id="filter-all-to" />
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+            <button class="filter-btn" onclick="filterAllData()">
+                <i class="bi bi-search"></i> Filter
+            </button>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="section">
+        <div class="table-container">
+            <div class="table-responsive">
+                <table class="table" id="all-data-table">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Tanggal</th>
+                            <th>pH</th>
+                            <th>ORP</th>
+                            <th>TDS</th>
+                            <th>DO</th>
+                            <th>KLH</th>
+                            <th>HAS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="all-data-body">
+                        <tr>
+                            <td colspan="8" class="text-center text-muted">
+                                <div class="loading">
+                                    <div class="loading-spinner"></div>
+                                    <p>Memuat data...</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>

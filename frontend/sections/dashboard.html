@@ -1,0 +1,91 @@
+<!-- DASHBOARD SECTION -->
+<h2 class="page-title">Dashboard Monitoring API</h2>
+    <p class="page-subtitle">Pantau status pengiriman data dan integrasi API real-time</p>
+
+    <!-- Statistics -->
+    <div class="stats-grid" id="stats-container">
+        <div class="stat-card">
+            <div>
+                <div class="stat-label">Total Data</div>
+                <div class="stat-value" id="stat-total">0</div>
+            </div>
+            <div class="stat-footer">
+                <i class="bi bi-database"></i>
+                <span>Records di database</span>
+            </div>
+        </div>
+
+        <div class="stat-card danger">
+            <div>
+                <div class="stat-label">Data Pending</div>
+                <div class="stat-value" id="stat-pending">0</div>
+            </div>
+            <div class="stat-footer">
+                <i class="bi bi-hourglass-top"></i>
+                <span>Menunggu pengiriman</span>
+            </div>
+        </div>
+
+        <div class="stat-card success">
+            <div>
+                <div class="stat-label">Data Terkirim</div>
+                <div class="stat-value" id="stat-sent">0</div>
+            </div>
+            <div class="stat-footer">
+                <i class="bi bi-check-circle"></i>
+                <span>Berhasil dikirim</span>
+            </div>
+        </div>
+
+        <div class="stat-card info">
+            <div>
+                <div class="stat-label">KLHK Success</div>
+                <div class="stat-value" id="stat-klhk">0</div>
+            </div>
+            <div class="stat-footer">
+                <i class="bi bi-cloud-check"></i>
+                <span>Sync berhasil</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Last Sync Info -->
+    <div class="sync-info-bar">
+        <div class="sync-info-content">
+            <i class="bi bi-clock-history text-primary"></i>
+            <span>Sinkronisasi terakhir: <strong id="last-sync">-</strong></span>
+        </div>
+        <button class="btn btn-sm btn-outline-primary" onclick="refreshStats()" 
+                style="border: 1px solid var(--primary); color: var(--primary); background: white; padding: 0.3rem 0.8rem; border-radius: 6px; font-size: 0.85rem; cursor: pointer;">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
+    </div>
+
+    <!-- Quick Preview Tables -->
+    <div class="dashboard-preview-grid">
+        <!-- Latest Pending Data -->
+        <div class="section">
+            <h3 class="section-title">
+                <i class="bi bi-hourglass-top"></i> Data Siap Dikirim 
+            </h3>
+            <div class="table-container">
+                <div id="pending-preview" class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Memuat data...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Latest KLHK Success -->
+        <div class="section">
+            <h3 class="section-title">
+                <i class="bi bi-check2-circle"></i> KLHK Success 
+            </h3>
+            <div class="table-container">
+                <div id="klhk-preview" class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Memuat data...</p>
+                </div>
+            </div>
+        </div>
+    </div>

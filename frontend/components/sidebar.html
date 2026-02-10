@@ -1,0 +1,26 @@
+<!-- SIDEBAR COMPONENT -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-title"><i class="bi bi-speedometer2"></i> Menu</div>
+    <a class="nav-item active" data-section="dashboard" onclick="showSection('dashboard')">
+        <i class="bi bi-graph-up"></i> Dashboard
+    </a>
+    <a class="nav-item" data-section="pending-data" onclick="showSection('pending-data')">
+        <i class="bi bi-hourglass-top"></i> Data Siap Kirim
+    </a>
+    <a class="nav-item" data-section="klhk-success" onclick="showSection('klhk-success')">
+        <i class="bi bi-check2-circle"></i> KLHK Success Log
+    </a>
+    <a class="nav-item" data-section="all-data" onclick="showSection('all-data')">
+        <i class="bi bi-table"></i> Semua Data
+    </a>
+    <a class="nav-item" data-section="logs" onclick="showSection('logs')">
+        <i class="bi bi-file-text"></i> Log
+    </a>
+    
+    <div class="sidebar-title"><i class="bi bi-gear"></i> Pengaturan</div>
+    <a class="nav-item" data-section="config" onclick="showSection('config')">
+        <i class="bi bi-sliders"></i> Konfigurasi
+    </a>
+</aside>

@@ -1,0 +1,195 @@
+<!-- CONFIGURATION SECTION -->
+<h2 class="page-title">Konfigurasi Sistem</h2>
+    <p class="page-subtitle">Kelola pengaturan aplikasi, database, API, dan device</p>
+
+    <div id="config-alert-container" style="margin-bottom: 1rem;"></div>
+
+    <!-- Config Form -->
+    <div class="table-container" style="padding: 2rem;">
+        <form id="configForm">
+            
+            <!-- General Configuration -->
+            <div class="config-form-section">
+                <h5>
+                    <i class="bi bi-sliders"></i> Pengaturan Umum
+                </h5>
+                <div class="config-form-grid">
+                    <div class="config-form-group">
+                        <label class="form-label">Timezone</label>
+                        <select class="form-control" id="config-timezone">
+                            <option value="Asia/Jakarta">Asia/Jakarta (UTC+7)</option>
+                            <option value="Asia/Makassar">Asia/Makassar (UTC+8)</option>
+                            <option value="Asia/Jayapura">Asia/Jayapura (UTC+9)</option>
+                        </select>
+                        <small>Pilih zona waktu sesuai lokasi perangkat</small>
+                    </div>
+                    <div class="config-form-group">
+                        <label class="form-label">Device ID</label>
+                        <input type="text" class="form-control" id="config-device-id" placeholder="DEVICE001">
+                        <small>ID unik perangkat untuk identifikasi</small>
+                    </div>
+                </div>
+                <!-- Hidden fields to keep form data intact -->
+                <input type="hidden" id="config-port-app">
+                <input type="hidden" id="config-port-log">
+                <input type="hidden" id="config-parameters">
+                <input type="hidden" id="config-gap-web">
+                <input type="hidden" id="config-web-title">
+                <input type="hidden" id="config-web-name">
+                <input type="hidden" id="config-location-name">
+                <input type="hidden" id="config-software-version">
+                <input type="hidden" id="config-geo-latitude">
+                <input type="hidden" id="config-geo-longitude">
+            </div>
+
+            <!-- Database Configuration -->
+            <div class="config-form-section">
+                <h5>
+                    <i class="bi bi-database"></i> Konfigurasi Database
+                </h5>
+                <div class="config-form-grid">
+                    <div class="config-form-group">
+                        <label class="form-label">Host</label>
+                        <input type="text" class="form-control" id="config-db-host" placeholder="localhost">
+                        <small>Alamat server database MySQL</small>
+                    </div>
+                    <div class="config-form-group">
+                        <label class="form-label">Port</label>
+                        <input type="number" class="form-control" id="config-db-port" placeholder="3306">
+                        <small>Port koneksi database (default: 3306)</small>
+                    </div>
+                    <div class="config-form-group">
+                        <label class="form-label">Database Name</label>
+                        <input type="text" class="form-control" id="config-db-name" placeholder="nama_database">
+                        <small>Nama database yang digunakan</small>
+                    </div>
+                    <div class="config-form-group">
+                        <label class="form-label">Username</label>
+                        <input type="text" class="form-control" id="config-db-user" placeholder="root">
+                        <small>Username untuk koneksi database</small>
+                    </div>
+                    <div class="config-form-group">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-control" id="config-db-password">
+                        <small>Password untuk koneksi database</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KLHK API Configuration -->
+            <div class="config-form-section">
+                <h5>
+                    <i class="bi bi-cloud-upload"></i> KLHK API
+                </h5>
+                <div class="config-form-grid">
+
+                    <div class="config-form-group">
+                        <label class="form-label">Status</label>
+                        <select class="form-control" id="config-klhk-status">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                        <small>Status pengiriman data ke KLHK API</small>
+                    </div>
+                    
+                    <div class="config-form-group">
+                        <label class="form-label">API URL</label>
+                        <input type="text" class="form-control" id="config-klhk-api-url" placeholder="https://api.klhk.go.id/...">
+                        <small>URL endpoint API KLHK untuk pengiriman data</small>
+                    </div>
+                    <div class="config-form-group">
+                        <label class="form-label">Token URL</label>
+                        <input type="text" class="form-control" id="config-klhk-token-url" placeholder="https://api.klhk.go.id/token">
+                        <small>URL untuk mendapatkan token autentikasi</small>
+                    </div>
+
+                   
+                </div>
+                <br>
+                <div class="config-form-grid">
+                    
+                    
+                    <div class="config-form-group">
+                        <label class="form-label">UID</label>
+                        <input type="text" class="form-control" id="config-klhk-uid" placeholder="UID-XXXXX">
+                        <small>User ID yang terdaftar di sistem KLHK</small>
+                    </div>
+
+                     <div class="config-form-group">
+                        <label class="form-label">Fields (comma-separated)</label>
+                        <input type="text" class="form-control" id="config-klhk-fields" placeholder="datetime,pH,cod,tss,nh3n,flow">
+                        <small>Parameter yang dikirim, dipisahkan koma</small>
+                        <small style="display: block; margin-top: 0.5rem; color: #6366f1; font-weight: 500;">
+                            <i class="bi bi-info-circle"></i> Fields tersedia: datetime, pH, orp, tds, conduct, do, salinity, nh3n, battery, depth, flow, tflow, turb, tss, cod, bod, no3, wtemp, wpress
+                        </small>
+                    </div>
+                    
+                    <div class="config-form-group">
+                        <label class="form-label">Max Retry Duplicate</label>
+                        <input type="number" class="form-control" id="config-klhk-max-dup-retry" placeholder="3">
+                        <small>Jumlah maksimal percobaan ulang untuk data duplikat</small>
+                    </div>
+                    <div class="config-form-group">
+                        <label class="form-label">Target Minute</label>
+                        <input type="number" class="form-control" id="config-klhk-target-minute" placeholder="0">
+                        <small>Menit target retry untuk pengiriman data (0-59)</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HAS API Configuration -->
+            <div class="config-form-section">
+                <h5>
+                    <i class="bi bi-cloud-upload"></i> HAS API
+                </h5>
+                <div class="config-form-grid">
+                    <div class="config-form-group">
+                        <label class="form-label">Status</label>
+                        <select class="form-control" id="config-has-status">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                        <small>Status pengiriman data ke HAS API</small>
+                    </div>
+                    <div class="config-form-group">
+                        <label class="form-label">API URL</label>
+                        <input type="text" class="form-control" id="config-has-api-url" placeholder="https://has.example.com/api">
+                        <small>URL endpoint API HAS</small>
+                    </div>
+                    
+                    <div class="config-form-group">
+                        <label class="form-label">HAS Logs API URL</label>
+                        <input type="text" class="form-control" id="config-has-logs-api-url" placeholder="https://has.example.com/logs">
+                        <small>URL API untuk log HAS</small>
+                    </div>
+
+                </div>
+                <div class="config-form-grid">
+
+                    <div class="config-form-group">
+                        <label class="form-label">Token</label>
+                        <input type="password" class="form-control" id="config-has-token-api">
+                        <small>Token autentikasi untuk HAS API</small>
+                    </div>
+                    <div class="config-form-group">
+                        <label class="form-label">Fields (comma-separated)</label>
+                        <input type="text" class="form-control" id="config-has-fields" placeholder="datetime,pH,cod,tss">
+                        <small>Parameter yang dikirim ke HAS</small>
+                        <small style="display: block; margin-top: 0.5rem; color: #6366f1; font-weight: 500;">
+                            <i class="bi bi-info-circle"></i> Fields tersedia: datetime, pH, orp, tds, conduct, do, salinity, nh3n, battery, depth, flow, tflow, turb, tss, cod, bod, no3, wtemp, wpress
+                        </small>
+                    </div>
+                    
+
+                </div>
+            </div>
+
+        </form>
+
+        <!-- Config Actions -->
+        <div class="config-actions">
+            <button class="filter-btn" onclick="saveConfiguration()">
+                <i class="bi bi-check-circle"></i> Simpan Konfigurasi
+            </button>
+        </div>
+    </div>
