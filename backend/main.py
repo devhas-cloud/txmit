@@ -96,24 +96,58 @@ def prosesCsv():
         write_log(f"Gagal membuka folder CSV: {e}")
         return
 
-    csv_files = [f for f in files if f.lower().endswith(".csv")]
+    # Ambil file baru (.csv) + file retry (.csv.processing)
+    csv_files = [
+        f for f in files
+        if f.lower().endswith(".csv") or f.lower().endswith(".csv.processing")
+    ]
+
     if not csv_files:
         write_log("Tidak ada file CSV.")
         return
 
     for filename in csv_files:
-        filepath = os.path.join(folder, filename)
-        write_log(f"\nMemproses file: {filename}")
 
+        original_path = os.path.join(folder, filename)
+
+        # =============================
+        # TENTUKAN PATH PROCESSING
+        # =============================
+        if filename.lower().endswith(".csv"):
+            # File baru → rename lock
+            processing_path = original_path + ".processing"
+
+            try:
+                os.rename(original_path, processing_path)
+            except OSError:
+                write_log(f"{filename} sedang digunakan / belum selesai ditulis → dilewati")
+                continue
+
+            display_name = filename
+
+        else:
+            # File retry (.processing)
+            processing_path = original_path
+            display_name = filename.replace(".processing", "")
+            write_log(f"Retry file: {display_name}")
+
+        write_log(f"\nMemproses file: {display_name}")
+
+        processed_ok = True
+
+        # =============================
+        # PROSES FILE
+        # =============================
         try:
-            with open(filepath, newline="", encoding="utf-8") as f:
+            with open(processing_path, newline="", encoding="utf-8") as f:
                 reader = csv.reader(f, delimiter=";")
 
-                # skip baris pertama (info tambahan)
+                # Skip baris pertama
                 try:
                     next(reader)
                 except StopIteration:
                     write_log("File kosong.")
+                    processed_ok = False
                     continue
 
                 # ==============================
@@ -136,6 +170,7 @@ def prosesCsv():
                 # PROCESS DATA ROWS
                 # ==============================
                 for index, row in enumerate(reader):
+
                     try:
                         def get_value(key):
                             idx = header_index.get(key)
@@ -147,7 +182,9 @@ def prosesCsv():
                         # TIMESTAMP
                         Interval_Timestamp = None
                         unix_dt = 0
+
                         ts_val = get_value("Interval_Timestamp")
+
                         if ts_val:
                             try:
                                 Interval_Timestamp = datetime.strptime(
@@ -178,30 +215,43 @@ def prosesCsv():
                         wpress = to_float(get_value("wpress"))
 
                         # ==============================
-                        # FILTER KALIBRASI & INSERT DATA
+                        # FILTER + INSERT
                         # ==============================
                         if Interval_Timestamp and Interval_Timestamp.minute % 2 == 0:
-                            # Coba insert data ke database
+
                             result = insert_data(
-                                Interval_Timestamp, unix_dt, 
-                                ph, orp, tds, conduct, do, salinity, nh3n, battery, depth, flow, tflow, turb, tss, cod, bod, no3, wtemp, wpress
+                                Interval_Timestamp, unix_dt,
+                                ph, orp, tds, conduct, do, salinity,
+                                nh3n, battery, depth, flow, tflow,
+                                turb, tss, cod, bod, no3, wtemp, wpress
                             )
+
                             if result:
-                                write_log(f"Row {index}: data berhasil dimasukkan ke database.")
-                                os.remove(filepath)
-                                write_log(f"File {filename} selesai diproses & dihapus.")
+                                write_log(f"Row {index}: OK")
                             else:
-                                write_log(f"Row {index}: penyimpanan data dilewati (sudah ada atau error).")
-                        else:
-                            write_log(f"Row {index}: kalibrasi/waktu ganjil → dilewati")
+                                processed_ok = False
+                                write_log(f"Row {index}: dilewati / duplikat")
 
                     except Exception as e:
+                        processed_ok = False
                         write_log(f"Error row {index}: {e}")
 
-            
-
         except Exception as e:
-            write_log(f"Gagal membaca {filename}: {e}")
+            processed_ok = False
+            write_log(f"Gagal membaca {display_name}: {e}")
+
+        # =============================
+        # HAPUS FILE JIKA SUKSES
+        # =============================
+        if processed_ok:
+            try:
+                os.remove(processing_path)
+                write_log(f"File {display_name} selesai diproses & dihapus.")
+            except Exception as e:
+                write_log(f"Gagal menghapus {display_name}: {e}")
+        else:
+            write_log(f"File {display_name} gagal diproses → tetap disimpan untuk retry.")
+
 
 # ======================================================
 #jalankan tiap 1 menit
