@@ -10,6 +10,15 @@ from datetime import datetime
 from collections import defaultdict
 from config import loadConfig, mysqlConfig
 
+# Initialize timezone early (before any function that uses write_log)
+tz = pytz.timezone('Asia/Jakarta')
+
+def write_log(message):
+    """Log message with timestamp"""
+    timestamp = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] {message}")
+
+
 # Global configuration parameters
 def initConfig():
     """Initialize global configuration from config.db"""
@@ -53,22 +62,6 @@ def initConfig():
 # Initialize configuration at startup
 if not initConfig():
     exit(1)
-
-# Default values (will be overridden by initConfig)
-STATUS = 'inactive'
-TIMEZONE = 'Asia/Jakarta'
-API_ENDPOINT = None
-TOKEN_API = None
-FIELDS = []
-DEVICE_ID = None
-MYSQL_CONFIG = {}
-tz = pytz.timezone('Asia/Jakarta')
-
-
-def write_log(message):
-    """Log message with timestamp"""
-    timestamp = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{timestamp}] {message}")
 
 
 def refreshConfig():

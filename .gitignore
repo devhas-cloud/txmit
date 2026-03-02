@@ -1,6 +1,6 @@
 venv/
 log/
-logs/
+logs/*.log
 config/*.db
 backend/__pycache__/
 supervisord.pid
