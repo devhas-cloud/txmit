@@ -83,7 +83,7 @@ def write_log(message):
 
 def get_jwt_token():
     try:
-        response = requests.get(API_JWT)
+        response = requests.get(API_JWT, timeout=(5, 15))
         if response.status_code == 200:
             jwt_token = response.text.strip()
             if jwt_token:
@@ -158,7 +158,7 @@ def send_data_to_api(data, start, end):
             return
 
         headers = {'Authorization': f'Bearer {key_token}', 'Content-Type': 'application/json'}
-        response = requests.post(API_ENDPOINT, json={"token": encoded}, headers=headers)
+        response = requests.post(API_ENDPOINT, json={"token": encoded}, headers=headers, timeout=(5, 30))
         result = response.json()
 
         write_log(f"API Response : {response.text}")
