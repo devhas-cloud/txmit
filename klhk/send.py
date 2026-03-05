@@ -94,17 +94,27 @@ def ambil_data():
     duplicate_attempt = 0  # Reset duplicate attempt setiap kali ambil data
     now = datetime.now(tz)
     grouped_data = defaultdict(list)
+    
+    write_log(f"🚀 Fungsi ambil_data() dipanggil - STATUS: {STATUS}")
+    
+    # Check if STATUS is active (important for scheduled runs, but manual runs should proceed)
+    if STATUS.lower() != "active":
+        write_log("⚠️ PERINGATAN: KLHK Send status tidak aktif, namun melanjutkan karena manual trigger")
 
     try:
+        write_log(f"📡 Menghubungkan ke database...")
         with mysql.connector.connect(**MYSQL_CONFIG) as conn:
             with conn.cursor() as cursor:
                 query_fields = ", ".join(["`date`"] + FIELDS)
-                cursor.execute(f"SELECT {query_fields} FROM tmp WHERE status IS NULL AND `date` < %s", [now])
+                query = f"SELECT {query_fields} FROM tmp WHERE status IS NULL AND `date` < %s"
+                write_log(f"🔍 Mencari data pending dengan query: {query}")
+                cursor.execute(query, [now])
                 rows = cursor.fetchall()
 
         
+                write_log(f"📊 Ditemukan {len(rows)} baris data pending")
                 if not rows:
-                    write_log("ℹ️ Tidak ada data baru.")
+                    write_log("ℹ️ Tidak ada data pending untuk dikirim.")
                     return
 
                 for row in rows:
@@ -161,7 +171,7 @@ def send_data_to_api(data, start, end):
             return
 
         headers = {'Authorization': f'Bearer {key_token}', 'Content-Type': 'application/json'}
-        response = requests.post(API_ENDPOINT, json={"token": encoded}, headers=headers, timeout=(5, 30))
+        response = requests.post(API_ENDPOINT, json={"token": encoded}, headers=headers, timeout=(5, 60))
         result = response.json()
 
         write_log(f"API Response : {response.text}")

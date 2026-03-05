@@ -1,12 +1,12 @@
 // ==========================================
-// PENDING-DATA.JS - Pending Data Functions
+// RETRY-DATA.JS - Retry Data Functions
 // ==========================================
 
-// Load pending data full
-async function loadPendingData(options = {}) {
+// Load retry data full
+async function loadRetryData(options = {}) {
     const { notify = false } = options;
     try {
-        const response = await fetch('/api/data/pending');
+        const response = await fetch('/api/data/retry');
         const data = await response.json();
         
         if (data.success) {
@@ -45,13 +45,13 @@ async function loadPendingData(options = {}) {
                         
                     });
                     
-                    html += `<td><span class="badge badge-pending"><i class="bi bi-hourglass-split"></i> Pending </span></td>
+                    html += `<td><span class="badge badge-pending"><i class="bi bi-arrow-repeat"></i> Retry </span></td>
                     <td>${statusKeterangan}</td></tr>`;
                 });
             }
             
             // Update the table header and body
-            const table = document.getElementById('pending-data-table');
+            const table = document.getElementById('retry-data-table');
             table.innerHTML = `
                 <thead>
                     <tr>${headerHtml}</tr>
@@ -61,7 +61,7 @@ async function loadPendingData(options = {}) {
             if (notify) {
                 Swal.fire({
                     title: 'Berhasil',
-                    text: 'Data pending berhasil dimuat',
+                    text: 'Data pengiriman ulang berhasil dimuat',
                     icon: 'success',
                     showConfirmButton: false,
                     timer: 1500,
@@ -72,27 +72,27 @@ async function loadPendingData(options = {}) {
             Swal.fire({
                 icon: 'error',
                 title: 'Gagal',
-                text: data.error || 'Gagal memuat data pending'
+                text: data.error || 'Gagal memuat data pengiriman ulang'
             });
         }
     } catch (error) {
-        console.error('Error loading pending data:', error);
+        console.error('Error loading retry data:', error);
         const colSpan = 7;
-        document.getElementById('pending-data-body').innerHTML = `<tr><td colspan="${colSpan}" class="text-center text-danger">Error loading data</td></tr>`;
+        document.getElementById('retry-data-body').innerHTML = `<tr><td colspan="${colSpan}" class="text-center text-danger">Error loading data</td></tr>`;
         if (notify) {
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: 'Gagal memuat data pending: ' + error.message
+                text: 'Gagal memuat data pengiriman ulang: ' + error.message
             });
         }
     }
 }
 
-// Filter pending data
-async function filterPendingData() {
-    const dateFrom = document.getElementById('filter-pending-from').value;
-    const dateTo = document.getElementById('filter-pending-to').value;
+// Filter retry data
+async function filterRetryData() {
+    const dateFrom = document.getElementById('filter-retry-from').value;
+    const dateTo = document.getElementById('filter-retry-to').value;
     
     if (!dateFrom || !dateTo) {
         Swal.fire({
@@ -105,7 +105,7 @@ async function filterPendingData() {
     }
     
     try {
-        const response = await fetch('/api/data/filter', {
+        const response = await fetch('/api/retry/filter', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -155,86 +155,86 @@ async function filterPendingData() {
             }
             
             // Update table headers and body
-            const table = document.getElementById('pending-data-table');
+            const table = document.getElementById('retry-data-table');
             table.innerHTML = `
                 <thead>
                     <tr>${headerHtml}</tr>
                 </thead>
-                <tbody id="pending-data-body">${html}</tbody>
+                <tbody id="retry-data-body">${html}</tbody>
             `;
             
             Swal.fire({
                 title: 'Berhasil',
-                text: 'Data berhasil difilter',
+                text: 'Data pengiriman ulang berhasil difilter',
                 icon: 'success',
                 timer: 2000
             });
         } else {
-            Swal.fire('Error', data.error || 'Gagal memfilter data', 'error');
+            Swal.fire('Error', data.error || 'Gagal memfilter data pengiriman ulang', 'error');
         }
     } catch (error) {
         console.error('Filter error:', error);
-        Swal.fire('Error', 'Gagal memfilter data: ' + error.message, 'error');
+        Swal.fire('Error', 'Gagal memfilter data pengiriman ulang: ' + error.message, 'error');
     }
 }
 
-// Load send status
-async function loadSendStatus() {
+// Load retry status
+async function loadRetryStatus() {
     try {
-        const response = await fetch('/api/send/status');
+        const response = await fetch('/api/retry/status');
         const data = await response.json();
         
         if (data.success) {
-            const statusText = document.getElementById('send-status-text');
-            const scheduleText = document.getElementById('send-schedule-text');
-            const manualBtn = document.getElementById('manual-send-btn');
+            const statusText = document.getElementById('retry-status-text');
+            const scheduleText = document.getElementById('retry-schedule-text');
+            const manualBtn = document.getElementById('manual-retry-btn');
             
             if (data.status === 'active' && data.is_running) {
-                statusText.innerHTML = '<i class="bi bi-check-circle-fill" style="color: #10b981;"></i> Pengiriman Otomatis Aktif';
-                scheduleText.textContent = data.schedule || 'Setiap jam pada menit ke-0';
+                statusText.innerHTML = '<i class="bi bi-check-circle-fill" style="color: #10b981;"></i> Pengiriman Ulang Otomatis Aktif';
+                scheduleText.textContent = data.schedule || 'Setiap jam pada menit ke-10';
                 manualBtn.disabled = false;
             } else if (data.status === 'active') {
-                statusText.innerHTML = '<i class="bi bi-exclamation-triangle-fill" style="color: #f59e0b;"></i> Pengiriman Otomatis Aktif (Service tidak berjalan)';
+                statusText.innerHTML = '<i class="bi bi-exclamation-triangle-fill" style="color: #f59e0b;"></i> Pengiriman Ulang Otomatis Aktif (Service tidak berjalan)';
                 scheduleText.textContent = 'Service perlu direstart';
                 manualBtn.disabled = false;
             } else {
-                statusText.innerHTML = '<i class="bi bi-x-circle-fill" style="color: #ef4444;"></i> Pengiriman Otomatis Nonaktif';
+                statusText.innerHTML = '<i class="bi bi-x-circle-fill" style="color: #ef4444;"></i> Pengiriman Ulang Otomatis Nonaktif';
                 scheduleText.textContent = 'Aktifkan di halaman konfigurasi';
                 manualBtn.disabled = true;
             }
         }
     } catch (error) {
-        console.error('Error loading send status:', error);
-        document.getElementById('send-status-text').innerHTML = '<i class="bi bi-exclamation-circle-fill" style="color: #ef4444;"></i> Gagal memuat status';
-        document.getElementById('send-schedule-text').textContent = 'Terjadi kesalahan';
+        console.error('Error loading retry status:', error);
+        document.getElementById('retry-status-text').innerHTML = '<i class="bi bi-exclamation-circle-fill" style="color: #ef4444;"></i> Gagal memuat status';
+        document.getElementById('retry-schedule-text').textContent = 'Terjadi kesalahan';
     }
 }
 
-// Reload pending data
-async function reloadPendingData() {
-    await loadPendingData({ notify: true });
-    await loadSendStatus();
+// Reload retry data
+async function reloadRetryData() {
+    await loadRetryData({ notify: true });
+    await loadRetryStatus();
 }
 
-// Manual send data
-async function manualSendData() {
+// Manual retry data
+async function manualRetryData() {
     try {
         const result = await Swal.fire({
-            title: 'Kirim Data Manual?',
-            text: 'Data pending akan segera dikirim ke KLHK. Lanjutkan?',
+            title: 'Kirim Ulang Data Manual?',
+            text: 'Data retry akan segera dikirim ulang ke KLHK. Lanjutkan?',
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#4f46e5',
             cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Ya, Kirim',
+            confirmButtonText: 'Ya, Kirim Ulang',
             cancelButtonText: 'Batal'
         });
         
         if (result.isConfirmed) {
             // Show loading
             Swal.fire({
-                title: 'Mengirim Data...',
-                text: 'Mohon tunggu, data sedang dikirim',
+                title: 'Mengirim Ulang Data...',
+                text: 'Mohon tunggu, data sedang dikirim ulang',
                 icon: 'info',
                 allowOutsideClick: false,
                 allowEscapeKey: false,
@@ -244,7 +244,7 @@ async function manualSendData() {
                 }
             });
             
-            const response = await fetch('/api/send/manual', {
+            const response = await fetch('/api/retry/manual', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -254,19 +254,19 @@ async function manualSendData() {
             if (data.success) {
                 await Swal.fire({
                     title: 'Berhasil!',
-                    text: data.message || 'Pengiriman manual berhasil dipicu. Periksa log untuk detail.',
+                    text: data.message || 'Pengiriman ulang manual berhasil dipicu. Periksa log untuk detail.',
                     icon: 'success',
                     confirmButtonColor: '#4f46e5'
                 });
                 
                 // Reload data after 3 seconds
                 setTimeout(() => {
-                    loadPendingData();
+                    loadRetryData();
                 }, 3000);
             } else {
                 Swal.fire({
                     title: 'Gagal',
-                    html: data.error || 'Gagal memicu pengiriman manual',
+                    html: data.error || 'Gagal memicu pengiriman ulang manual',
                     icon: 'error',
                     confirmButtonColor: '#4f46e5',
                     footer: data.error && data.error.includes('not active') 
@@ -276,7 +276,7 @@ async function manualSendData() {
             }
         }
     } catch (error) {
-        console.error('Error manual send:', error);
+        console.error('Error manual retry:', error);
         Swal.fire({
             title: 'Error',
             text: 'Terjadi kesalahan: ' + error.message,
@@ -287,11 +287,11 @@ async function manualSendData() {
 }
 
 // Initialize when section loads
-if (typeof window.initPendingDataSection === 'undefined') {
-    window.initPendingDataSection = function() {
-        loadPendingData();
-        loadSendStatus();
+if (typeof window.initRetryDataSection === 'undefined') {
+    window.initRetryDataSection = function() {
+        loadRetryData();
+        loadRetryStatus();
         // Auto refresh status every 30 seconds
-        setInterval(loadSendStatus, 30000);
+        setInterval(loadRetryStatus, 30000);
     };
 }

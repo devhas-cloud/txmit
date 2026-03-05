@@ -28,6 +28,13 @@ function refreshVisibleSectionData() {
     const pendingDataSection = document.getElementById('pending-data-section');
     if (pendingDataSection && pendingDataSection.style.display !== 'none' && typeof loadPendingData === 'function') {
         loadPendingData();
+        if (typeof loadSendStatus === 'function') loadSendStatus();
+    }
+
+    const retrySection = document.getElementById('retry-section');
+    if (retrySection && retrySection.style.display !== 'none' && typeof loadRetryData === 'function') {
+        loadRetryData();
+        if (typeof loadRetryStatus === 'function') loadRetryStatus();
     }
 
     const klhkSuccessSection = document.getElementById('klhk-success-section');
@@ -131,6 +138,7 @@ function showSection(sectionName) {
         // Hide all sections
         document.getElementById('dashboard-section').style.display = 'none';
         document.getElementById('pending-data-section').style.display = 'none';
+        document.getElementById('retry-section').style.display = 'none';
         document.getElementById('klhk-success-section').style.display = 'none';
         document.getElementById('all-data-section').style.display = 'none';
         // Note: logs-section removed - logs is now standalone page
@@ -169,6 +177,15 @@ function showSection(sectionName) {
             // Set default date filters (1 day)
             setDefaultDateFilters('filter-pending-from', 'filter-pending-to');
             loadPendingData({ notify: true });
+            if (typeof loadSendStatus === 'function') loadSendStatus();
+        } else if (sectionName === 'retry') {
+            const section = document.getElementById('retry-section');
+            if (section) section.style.display = 'block';
+            activeItem = document.querySelector('[data-section="retry"]');
+            // Set default date filters (1 day)
+            setDefaultDateFilters('filter-retry-from', 'filter-retry-to');
+            loadRetryData();
+            if (typeof loadRetryStatus === 'function') loadRetryStatus();
         } else if (sectionName === 'klhk-success') {
             const section = document.getElementById('klhk-success-section');
             if (section) section.style.display = 'block';

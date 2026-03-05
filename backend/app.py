@@ -168,7 +168,173 @@ def get_pending_data():
         # Get data yang belum dikirim (status != 'sent' atau dateterkirim NULL)
         query = """
         SELECT * FROM tmp 
-        WHERE status IS NULL OR status = '' OR status = 'retry'
+        WHERE status IS NULL OR status = ''
+        ORDER BY `date` DESC 
+        LIMIT 1000
+        """
+        
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        
+        cursor.close()
+        conn.close()
+        
+        # Convert datetime objects to strings and handle None values
+        for row in rows:
+            if isinstance(row.get('date'), datetime):
+                row['date'] = row['date'].isoformat()
+            if isinstance(row.get('dateterkirim'), datetime):
+                row['dateterkirim'] = row['dateterkirim'].isoformat()
+            
+            # Ensure numeric fields are properly formatted
+            for key in ['pH', 'orp', 'tds', 'do', 'conduct', 'flow', 'cod', 'tss', 'bod']:
+                if row.get(key) is not None:
+                    if isinstance(row[key], (int, float)):
+                        row[key] = float(row[key])
+        
+        # Load config to get klhk_fields
+        from config import loadConfig
+        config = loadConfig()
+        klhk_fields = config.get('klhk_fields', 'datetime,pH,cod,tss,nh3n,flow')
+        
+        return jsonify({
+            'success': True,
+            'count': len(rows),
+            'data': rows,
+            'klhk_fields': klhk_fields
+        }), 200
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+@app.route('/api/retry/status', methods=['GET'])
+@login_required
+def get_retry_status():
+    """Get the status of automatic KLHK retry sending"""
+    try:
+        from config import loadConfig
+        config = loadConfig()
+        klhk_status = config.get('klhk_status', 'inactive')
+        target_minute = config.get('klhk_target_minute', '10')
+        
+        # Check if retry.py process is running
+        import glob
+        try:
+            is_running = False
+            # Scan /proc/*/cmdline to find retry.py process
+            for cmdline_file in glob.glob('/proc/[0-9]*/cmdline'):
+                try:
+                    with open(cmdline_file, 'r') as f:
+                        cmdline = f.read().replace('\x00', ' ')
+                        # Check if this is "python -u retry.py"
+                        if 'python' in cmdline and ' retry.py' in cmdline:
+                            is_running = True
+                            break
+                except (IOError, OSError):
+                    continue
+        except Exception as e:
+            is_running = False
+        
+        return jsonify({
+            'success': True,
+            'status': klhk_status,
+            'is_running': is_running,
+            'target_minute': target_minute,
+            'schedule': f'Setiap jam pada menit ke-{target_minute}'
+        }), 200
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/retry/manual', methods=['POST'])
+@login_required
+def manual_retry():
+    """Trigger manual KLHK retry data sending"""
+    try:
+        from config import loadConfig
+        config = loadConfig()
+        klhk_status = config.get('klhk_status', 'inactive')
+        
+        if klhk_status.lower() != 'active':
+            return jsonify({
+                'success': False,
+                'error': 'KLHK retry module is not active. Please enable it in configuration.'
+            }), 400
+        
+        # Check if there's data to retry
+        try:
+            mysql_config = mysqlConfig()
+            conn = mysql.connector.connect(**mysql_config)
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM tmp WHERE status='retry'")
+            retry_count = cursor.fetchone()[0]
+            cursor.close()
+            conn.close()
+            
+            if retry_count == 0:
+                return jsonify({
+                    'success': False,
+                    'error': 'Tidak ada data retry untuk dikirim. Silakan periksa data di tabel.'
+                }), 400
+        except Exception as db_error:
+            # If DB check fails, continue anyway
+            retry_count = 0
+        
+        # Import and run the retry function
+        import sys
+        sys.path.insert(0, os.path.join(os.path.dirname(backend_dir), 'klhk'))
+        
+        try:
+            from retry import ambil_data, reload_config
+            
+            # Wrapper function to reload config before running
+            def manual_retry_wrapper():
+                # Redirect stdout to retry.log
+                import sys
+                log_file = open('/app/logs/retry.log', 'a')
+                sys.stdout = log_file
+                sys.stderr = log_file
+                
+                try:
+                    reload_config()  # Reload config to ensure STATUS is active
+                    ambil_data()
+                finally:
+                    log_file.flush()
+                    log_file.close()
+                    sys.stdout = sys.__stdout__
+                    sys.stderr = sys.__stderr__
+            
+            # Run in a thread to avoid blocking
+            import threading
+            thread = threading.Thread(target=manual_retry_wrapper)
+            thread.daemon = True
+            thread.start()
+            
+            return jsonify({
+                'success': True,
+                'message': f'Pengiriman ulang manual berhasil dipicu untuk {retry_count} data. Periksa log untuk detail.'
+            }), 200
+            
+        except Exception as retry_error:
+            return jsonify({
+                'success': False,
+                'error': f'Failed to trigger retry: {str(retry_error)}'
+            }), 500
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+@app.route('/api/data/retry', methods=['GET'])
+@login_required
+def get_retry_data():
+    """Mendapatkan data yang statusnya retry (gagal kirim sebelumnya)"""
+    try:
+        mysql_config = mysqlConfig()
+        conn = mysql.connector.connect(**mysql_config)
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get data dengan status 'retry'
+        query = """
+        SELECT * FROM tmp 
+        WHERE status = 'retry'
         ORDER BY `date` DESC 
         LIMIT 1000
         """
@@ -263,10 +429,15 @@ def get_data_stats():
         
         total = total_tmp + total_data
         
-        # Data pending
-        cursor.execute("SELECT COUNT(*) as pending FROM tmp")
+        # Data pending (status NULL atau empty)
+        cursor.execute("SELECT COUNT(*) as pending FROM tmp WHERE status IS NULL OR status = ''")
         pending_row = cursor.fetchone()
         pending = pending_row['pending'] if pending_row else 0
+        
+        # Data retry (status = 'retry')
+        cursor.execute("SELECT COUNT(*) as retry FROM tmp WHERE status = 'retry'")
+        retry_row = cursor.fetchone()
+        retry = retry_row['retry'] if retry_row else 0
         
         # Data sent
         cursor.execute("SELECT COUNT(*) as sent FROM data")
@@ -294,6 +465,7 @@ def get_data_stats():
             'stats': {
                 'total_data': total,
                 'pending_data': pending,
+                'retry_data': retry,
                 'sent_data': sent,
                 'klhk_success': klhk_success,
                 'last_sync': last_sync
@@ -305,6 +477,127 @@ def get_data_stats():
         print(f"Error in get_data_stats: {str(e)}")
         print(traceback.format_exc())
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/send/status', methods=['GET'])
+@login_required
+def get_send_status():
+    """Get the status of automatic KLHK sending"""
+    try:
+        from config import loadConfig
+        config = loadConfig()
+        klhk_status = config.get('klhk_status', 'inactive')
+        target_minute = 0
+        
+        # Check if send.py process is running
+        # Note: pgrep is not available in slim Docker image, use /proc instead
+        import glob
+        try:
+            is_running = False
+            # Scan /proc/*/cmdline to find send.py process
+            for cmdline_file in glob.glob('/proc/[0-9]*/cmdline'):
+                try:
+                    with open(cmdline_file, 'r') as f:
+                        cmdline = f.read().replace('\x00', ' ')
+                        # Check if this is "python -u send.py" (not hasSend.py)
+                        if 'python' in cmdline and ' send.py' in cmdline:
+                            is_running = True
+                            break
+                except (IOError, OSError):
+                    # Process might have terminated, skip
+                    continue
+        except Exception as e:
+            is_running = False
+        
+        return jsonify({
+            'success': True,
+            'status': klhk_status,
+            'is_running': is_running,
+            'target_minute': target_minute,
+            'schedule': f'Setiap jam pada menit ke-{target_minute}'
+        }), 200
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/send/manual', methods=['POST'])
+@login_required
+def manual_send():
+    """Trigger manual KLHK data sending"""
+    try:
+        from config import loadConfig
+        config = loadConfig()
+        klhk_status = config.get('klhk_status', 'inactive')
+        
+        if klhk_status.lower() != 'active':
+            return jsonify({
+                'success': False,
+                'error': 'KLHK send module is not active. Please enable it in configuration.'
+            }), 400
+        
+        # Check if there's data to send
+        try:
+            mysql_config = mysqlConfig()
+            conn = mysql.connector.connect(**mysql_config)
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM tmp WHERE status IS NULL OR status = ''")
+            pending_count = cursor.fetchone()[0]
+            cursor.close()
+            conn.close()
+            
+            if pending_count == 0:
+                return jsonify({
+                    'success': False,
+                    'error': 'Tidak ada data pending untuk dikirim. Silakan periksa data di tabel.'
+                }), 400
+        except Exception as db_error:
+            # If DB check fails, continue anyway
+            pending_count = 0
+        
+        # Import and run the send function
+        import sys
+        sys.path.insert(0, os.path.join(os.path.dirname(backend_dir), 'klhk'))
+        
+        try:
+            from send import ambil_data, update_config
+            
+            # Wrapper function to update config before running
+            def manual_send_wrapper():
+                # Redirect stdout to send.log
+                import sys
+                log_file = open('/app/logs/send.log', 'a')
+                sys.stdout = log_file
+                sys.stderr = log_file
+                
+                try:
+                    update_config()  # Reload config to ensure STATUS is active
+                    ambil_data()
+                finally:
+                    log_file.flush()
+                    log_file.close()
+                    sys.stdout = sys.__stdout__
+                    sys.stderr = sys.__stderr__
+            
+            # Run in a thread to avoid blocking
+            import threading
+            thread = threading.Thread(target=manual_send_wrapper)
+            thread.daemon = True
+            thread.start()
+            
+            return jsonify({
+                'success': True,
+                'message': f'Pengiriman manual berhasil dipicu untuk {pending_count} data. Periksa log untuk detail.'
+            }), 200
+            
+        except Exception as send_error:
+            return jsonify({
+                'success': False,
+                'error': f'Failed to trigger send: {str(send_error)}'
+            }), 500
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 
 @app.route('/api/data/filter', methods=['POST'])
 @login_required
@@ -375,6 +668,56 @@ def filter_data():
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/retry/filter', methods=['POST'])
+@login_required
+def filter_retry_data():
+    """Filter data retry berdasarkan kriteria tertentu"""
+    try:
+        data = request.get_json()
+        mysql_config = mysqlConfig()
+        conn = mysql.connector.connect(**mysql_config)
+        cursor = conn.cursor(dictionary=True)
+        
+        # Build query with parameterized statements to prevent SQL injection
+        date_from = data.get('date_from')
+        date_to = data.get('date_to')
+        
+        params = []
+        
+        query = "SELECT * FROM tmp WHERE status = 'retry'"
+        
+        if date_from:
+            query += " AND `date` >= %s"
+            params.append(date_from)
+        if date_to:
+            query += " AND `date` <= %s"
+            params.append(date_to)
+        
+        query += " ORDER BY `date` DESC LIMIT 1000"
+        
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        
+        # Convert datetime
+        for row in rows:
+            for key, value in row.items():
+                if isinstance(value, datetime):
+                    row[key] = value.isoformat()
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'count': len(rows),
+            'data': rows
+        }), 200
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @app.route('/api/data/all', methods=['POST'])
 @login_required

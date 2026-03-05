@@ -1,27 +1,27 @@
-<!-- PENDING DATA SECTION -->
-<h2 class="page-title">Data Siap Dikirim</h2>
-    <p class="page-subtitle">Data yang belum dikirim ke API eksternal</p>
+<!-- retry DATA SECTION -->
+<h2 class="page-title">Data Pengiriman Ulang</h2>
+    <p class="page-subtitle">Data yang gagal dikirim ke API eksternal dan menunggu pengiriman ulang</p>
 
     <!-- Status Pengiriman Otomatis -->
     <div class="section" style="margin-bottom: 1rem;">
-        <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #4f46e5;">
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #f59e0b;">
             <div style="display: flex; align-items: center; gap: 1rem;">
-                <i class="bi bi-clock-history" style="font-size: 1.5rem; color: #4f46e5;"></i>
+                <i class="bi bi-arrow-repeat" style="font-size: 1.5rem; color: #f59e0b;"></i>
                 <div>
-                    <div style="font-weight: 600; color: #1f2937;" id="send-status-text">
+                    <div style="font-weight: 600; color: #1f2937;" id="retry-status-text">
                         <i class="bi bi-hourglass-split"></i> Memuat status...
                     </div>
-                    <div style="font-size: 0.875rem; color: #6b7280;" id="send-schedule-text">
-                        Memeriksa jadwal pengiriman...
+                    <div style="font-size: 0.875rem; color: #6b7280;" id="retry-schedule-text">
+                        Memeriksa jadwal pengiriman ulang...
                     </div>
                 </div>
             </div>
             <div style="display: flex; gap: 0.5rem;">
-                <button class="btn btn-primary" onclick="reloadPendingData()" title="Muat ulang data">
+                <button class="btn btn-primary" onclick="reloadRetryData()" title="Muat ulang data">
                     <i class="bi bi-arrow-clockwise"></i> Reload
                 </button>
-                <button class="btn btn-success" onclick="manualSendData()" id="manual-send-btn" title="Kirim data sekarang">
-                    <i class="bi bi-send-fill"></i> Kirim Manual
+                <button class="btn btn-success" onclick="manualRetryData()" id="manual-retry-btn" title="Kirim ulang data sekarang">
+                    <i class="bi bi-send-fill"></i> Kirim Ulang Manual
                 </button>
             </div>
         </div>
@@ -31,14 +31,14 @@
     <div class="filter-group" style="display: none;">
         <div>
             <label>Tanggal Mulai</label>
-            <input type="date" id="filter-pending-from" />
+            <input type="date" id="filter-retry-from" />
         </div>
         <div>
             <label>Tanggal Akhir</label>
-            <input type="date" id="filter-pending-to" />
+            <input type="date" id="filter-retry-to" />
         </div>
         <div style="display: flex; gap: 0.5rem;">
-            <button class="filter-btn" onclick="filterPendingData()">
+            <button class="filter-btn" onclick="filterretryData()">
                 <i class="bi bi-search"></i> Filter
             </button>
         </div>
@@ -48,7 +48,7 @@
     <div class="section">
         <div class="table-container">
             <div class="table-responsive">
-                <table class="table" id="pending-data-table">
+                <table class="table" id="retry-data-table">
                     <thead>
                         <tr>
                             <th>No</th>
@@ -60,12 +60,12 @@
                             <th>Status</th>
                         </tr>
                     </thead>
-                    <tbody id="pending-data-body">
+                    <tbody id="retry-data-body">
                         <tr>
                             <td colspan="7" class="text-center text-muted">
                                 <div class="loading">
                                     <div class="loading-spinner"></div>
-                                    <p>Memuat data pending...</p>
+                                    <p>Memuat data pengiriman ulang...</p>
                                 </div>
                             </td>
                         </tr>

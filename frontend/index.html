@@ -40,6 +40,9 @@
             <!-- Pending Data Section -->
             <div id="pending-data-section" style="display: none;"></div>
 
+            <!-- Retry Data Section -->
+            <div id="retry-section" style="display: none;"></div>
+
             <!-- KLHK Success Section -->
             <div id="klhk-success-section" style="display: none;"></div>
 
@@ -63,6 +66,7 @@
     <script src="js/main.js"></script>
     <script src="js/dashboard.js"></script>
     <script src="js/pending-data.js"></script>
+    <script src="js/retry-data.js"></script>
     <script src="js/klhk-success.js"></script>
     <script src="js/all-data.js"></script>
     <script src="js/config.js"></script>
@@ -86,6 +90,10 @@
                 const dashboardResponse = await fetch('sections/dashboard.html');
                 const dashboardContent = await dashboardResponse.text();
                 document.getElementById('dashboard-section').innerHTML = dashboardContent;
+
+                const retryResponse = await fetch('sections/retry-data.html');
+                const retryContent = await retryResponse.text();
+                document.getElementById('retry-section').innerHTML = retryContent;
 
                 const pendingDataResponse = await fetch('sections/pending-data.html');
                 const pendingDataContent = await pendingDataResponse.text();

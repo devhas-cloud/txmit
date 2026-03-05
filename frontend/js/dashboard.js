@@ -24,12 +24,14 @@ async function refreshStats() {
             // Add null checks before setting content
             const statTotal = document.getElementById('stat-total');
             const statPending = document.getElementById('stat-pending');
+            const statRetry = document.getElementById('stat-retry');
             const statSent = document.getElementById('stat-sent');
             const statKlhk = document.getElementById('stat-klhk');
             const lastSync = document.getElementById('last-sync');
             
             if (statTotal) statTotal.textContent = stats.total_data.toLocaleString();
             if (statPending) statPending.textContent = stats.pending_data.toLocaleString();
+            if (statRetry) statRetry.textContent = (stats.retry_data || 0).toLocaleString();
             if (statSent) statSent.textContent = stats.sent_data.toLocaleString();
             if (statKlhk) statKlhk.textContent = stats.klhk_success.toLocaleString();
             
