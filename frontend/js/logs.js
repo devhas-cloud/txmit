@@ -6,6 +6,28 @@ let currentLogType = 'main';
 let logAutoRefreshInterval;
 let isLogAutoRefreshActive = true;
 let lastLogUpdate = new Date();
+let pageStartTime = new Date();
+
+// Scheduler untuk logs - jalankan task di detik spesifik setiap menit
+function startLogScheduler(task, delaySeconds = 0) {
+    function scheduleNext() {
+        const now = new Date();
+        // Hitung sisa detik sampai detik target berikutnya
+        let secondsUntilTarget = delaySeconds - now.getSeconds();
+        if (secondsUntilTarget <= 0) {
+            secondsUntilTarget += 60;
+        }
+        const msUntilTarget = secondsUntilTarget * 1000 - now.getMilliseconds();
+
+        setTimeout(() => {
+            const runTime = new Date();
+            task(runTime); // Jalankan task tepat di detik yang ditentukan
+            scheduleNext(); // Jadwalkan task berikutnya
+        }, msUntilTarget);
+    }
+
+    scheduleNext();
+}
 
 // Switch between log categories
 function switchLog(logType) {
@@ -168,25 +190,42 @@ function toggleAutoRefresh() {
     }
 }
 
-// Update "last updated" timestamp
+// Update "last updated" timestamp with running time
 function updateLogTimestamp() {
     const now = new Date();
     const diffSeconds = Math.floor((now - lastLogUpdate) / 1000);
     
-    let timeText = 'last updated just now';
+    // Format last update time
+    let timeText = 'Last update just now';
     if (diffSeconds >= 60 && diffSeconds < 120) {
-        timeText = 'last updated a minute ago';
+        timeText = 'Last update a minute ago';
     } else if (diffSeconds >= 120) {
         const minutes = Math.floor(diffSeconds / 60);
-        timeText = `last updated ${minutes} minutes ago`;
+        timeText = `Last update ${minutes} minutes ago`;
     }
+    
+    // Format running time (dd-mm-yyyy h:m:s)
+    const day = pageStartTime.getDate().toString().padStart(2, '0');
+    const month = (pageStartTime.getMonth() + 1).toString().padStart(2, '0');
+    const year = pageStartTime.getFullYear();
+    const hours = pageStartTime.getHours().toString().padStart(2, '0');
+    const minutes = pageStartTime.getMinutes().toString().padStart(2, '0');
+    const seconds = pageStartTime.getSeconds().toString().padStart(2, '0');
+    const runningTime = `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
     
     const logSubtitle = document.getElementById('logSubtitle');
     if (logSubtitle) {
-        logSubtitle.textContent = timeText;
+        logSubtitle.innerHTML = `<span>${timeText}</span> | <span class="ms-3">Running since: ${runningTime}</span>`;
     }
 }
 
-// Update timestamp every 30 seconds
-setInterval(updateLogTimestamp, 30000);
+// Update timestamp at second 05 every minute
+startLogScheduler(() => {
+    updateLogTimestamp();
+}, 5);
+
+// Call updateLogTimestamp immediately on page load
+document.addEventListener('DOMContentLoaded', () => {
+    updateLogTimestamp();
+});
 

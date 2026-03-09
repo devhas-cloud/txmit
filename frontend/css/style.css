@@ -79,6 +79,22 @@
     color: white;
 }
 
+.clock-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.5rem;
+    background: rgba(79, 70, 229, 0.1);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-main);
+    border: 1px solid rgba(79, 70, 229, 0.2);
+    margin: 0 1rem 0 0;
+    flex-shrink: 0;
+}
+
 /* =========================================
    LAYOUT (SIDEBAR & MAIN)
    ========================================= */

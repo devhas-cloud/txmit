@@ -2,20 +2,54 @@
 // MAIN.JS - Global/Shared Functions
 // ==========================================
 
-function startEfficientScheduler(task) {
+function startEfficientScheduler(task, delaySeconds = 0) {
     function scheduleNext() {
         const now = new Date();
-        // Hitung sisa milidetik sampai detik 0 menit berikutnya
-        const msUntilNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+        // Hitung sisa detik sampai detik target berikutnya
+        let secondsUntilTarget = delaySeconds - now.getSeconds();
+        if (secondsUntilTarget <= 0) {
+            secondsUntilTarget += 60;
+        }
+        const msUntilTarget = secondsUntilTarget * 1000 - now.getMilliseconds();
 
         setTimeout(() => {
             const runTime = new Date();
-            task(runTime); // Jalankan task tepat di detik 0
+            task(runTime); // Jalankan task tepat di detik yang ditentukan
             scheduleNext(); // Jadwalkan task berikutnya
-        }, msUntilNextMinute);
+        }, msUntilTarget);
     }
 
     scheduleNext();
+}
+
+// ==========================================
+// REAL-TIME CLOCK
+// ==========================================
+
+function updateRealTimeClock() {
+    const clockElement = document.getElementById('current-time');
+    if (clockElement) {
+        const now = new Date();
+        
+        // Format: YYYY-MM-DD HH:MM:SS
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        
+        const timeString = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        clockElement.textContent = timeString;
+    }
+}
+
+function startRealTimeClock() {
+    // Update clock immediately
+    updateRealTimeClock();
+    
+    // Set interval to update every 1000ms (1 second)
+    setInterval(updateRealTimeClock, 1000);
 }
 
 function refreshDashboardData() {
@@ -24,7 +58,7 @@ function refreshDashboardData() {
     if (typeof loadKLHKSuccessPreview === 'function') loadKLHKSuccessPreview();
 }
 
-function refreshVisibleSectionData() {
+function refreshPendingAndRetryData() {
     const pendingDataSection = document.getElementById('pending-data-section');
     if (pendingDataSection && pendingDataSection.style.display !== 'none' && typeof loadPendingData === 'function') {
         loadPendingData();
@@ -36,6 +70,10 @@ function refreshVisibleSectionData() {
         loadRetryData();
         if (typeof loadRetryStatus === 'function') loadRetryStatus();
     }
+}
+
+function refreshVisibleSectionData() {
+    refreshPendingAndRetryData();
 
     const klhkSuccessSection = document.getElementById('klhk-success-section');
     if (klhkSuccessSection && klhkSuccessSection.style.display !== 'none' && typeof loadKLHKSuccess === 'function') {
@@ -53,10 +91,15 @@ document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
     refreshDashboardData();
 
+    // Dashboard data at second 0 every minute
     startEfficientScheduler(() => {
         refreshDashboardData();
-        refreshVisibleSectionData();
-    });
+    }, 0);
+
+    // Pending and Retry data at second 5 every minute
+    startEfficientScheduler(() => {
+        refreshPendingAndRetryData();
+    }, 5);
 
     // Note: loadDashboard() is called from index.html's loadComponents()
     // after all components and sections are loaded

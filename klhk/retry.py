@@ -217,14 +217,20 @@ def send_data_to_api(data, start, end):
 def scheduler():
     write_log(f"⏱️ Service aktif. Menunggu eksekusi scheduler.")
     last_run = None
+    last_reload_minute = -1
     try:
         while True:
             now = datetime.now(tz)
+            
+            # Reload config setiap menit (pada saat detik = 0)
+            if now.second == 0 and now.minute != last_reload_minute:
+                reload_config()
+                #write_log("🔄 Config di-reload")
+                last_reload_minute = now.minute
+            
             if now.minute == TARGET_MINUTE and now.second == 0:
                 run_time = now.replace(minute=TARGET_MINUTE, second=0, microsecond=0)
                 if last_run != run_time:
-                    # Reload config setiap kali sebelum eksekusi
-                    reload_config()
                     if STATUS.lower() != "active":
                         write_log("ℹ️ Module KLHK Retry tidak aktif. Melewati eksekusi.")
                     else:   

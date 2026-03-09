@@ -230,6 +230,13 @@
             gap: 0.5rem;
         }
 
+        #logSubtitle {
+            font-size: 0.8rem;
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 0.5rem !important;
+        }
+
         .terminal-status {
             font-size: 0.8rem;
             color: var(--text-secondary);
@@ -522,6 +529,7 @@
                         <i class="bi bi-terminal-fill text-primary"></i> 
                         <span id="log-title-text">Main Log</span>
                     </h3>
+                    <div id="logSubtitle" class="text-secondary small mt-1"></div>
                 </div>
                 <div class="terminal-status">
                     <div class="status-dot" id="connection-dot"></div>
@@ -576,6 +584,55 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
+        // ==========================================
+        // TIMESTAMP & SCHEDULER
+        // ==========================================
+        let pageStartTime = new Date();
+        let lastLogUpdate = new Date();
+
+        // Scheduler untuk logs - jalankan task di detik spesifik setiap menit
+        function startLogScheduler(task, delaySeconds = 0) {
+            function scheduleNext() {
+                const now = new Date();
+                // Hitung sisa detik sampai detik target berikutnya
+                let secondsUntilTarget = delaySeconds - now.getSeconds();
+                if (secondsUntilTarget <= 0) {
+                    secondsUntilTarget += 60;
+                }
+                const msUntilTarget = secondsUntilTarget * 1000 - now.getMilliseconds();
+
+                setTimeout(() => {
+                    const runTime = new Date();
+                    task(runTime); // Jalankan task tepat di detik yang ditentukan
+                    scheduleNext(); // Jadwalkan task berikutnya
+                }, msUntilTarget);
+            }
+
+            scheduleNext();
+        }
+
+        // Update "last updated" timestamp with running time
+        function updateLogTimestamp() {
+            const now = new Date();
+            const diffSeconds = Math.floor((now - lastLogUpdate) / 1000);
+            
+           
+            
+            // Format current running time (dd-mm-yyyy h:m:s) - REAL TIME
+            const day = now.getDate().toString().padStart(2, '0');
+            const month = (now.getMonth() + 1).toString().padStart(2, '0');
+            const year = now.getFullYear();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const seconds = now.getSeconds().toString().padStart(2, '0');
+            const runningTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            
+            const logSubtitle = document.getElementById('logSubtitle');
+            if (logSubtitle) {
+                logSubtitle.innerHTML = `<span class="ms-3"><i class="bi bi-clock"></i> ${runningTime}</span>`;
+            }
+        }
+
         // ==========================================
         // APP STATE & CONFIG
         // ==========================================
@@ -661,6 +718,9 @@
                     DOM.statusText.innerText = "Live Connected";
                     DOM.statusText.classList.remove('text-warning');
 
+                    // Update last log update time
+                    lastLogUpdate = new Date();
+
                     // Auto-scroll to bottom
                     if (state.autoScroll) {
                         setTimeout(() => {
@@ -690,12 +750,20 @@
             // Load initial logs from backend
             loadLogsFromBackend();
 
-            // Set up auto-refresh interval (every 1 minute)
-            state.timer = setInterval(() => {
+            // Set up auto-refresh for logs at second 05 every minute
+            startLogScheduler(() => {
                 if (!state.isPaused) {
                     loadLogsFromBackend();
                 }
-            }, 60000);
+            }, 5);
+
+            // Update timestamp immediately on page load
+            updateLogTimestamp();
+
+            // Update timestamp every 1 second for real-time display
+            setInterval(() => {
+                updateLogTimestamp();
+            }, 1000);
 
             updateLineCount();
         }
@@ -755,6 +823,9 @@
             
             // Load logs from backend
             loadLogsFromBackend().then(() => {
+                // Update last log update time
+                lastLogUpdate = new Date();
+                
                 // Show success toast
                 const Toast = Swal.mixin({
                     toast: true,
