@@ -1,76 +1,78 @@
 <!-- retry DATA SECTION -->
 <h2 class="page-title">Data Pengiriman Ulang</h2>
-    <p class="page-subtitle">Data yang gagal dikirim ke API eksternal dan menunggu pengiriman ulang</p>
+<p class="page-subtitle">Data yang gagal dikirim ke API eksternal dan menunggu pengiriman ulang</p>
 
-    <!-- Status Pengiriman Otomatis -->
-    <div class="section" style="margin-bottom: 1rem;">
-        <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #f59e0b;">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-                <i class="bi bi-arrow-repeat" style="font-size: 1.5rem; color: #f59e0b;"></i>
-                <div>
-                    <div style="font-weight: 600; color: #1f2937;" id="retry-status-text">
-                        <i class="bi bi-hourglass-split"></i> Memuat status...
-                    </div>
-                    <div style="font-size: 0.875rem; color: #6b7280;" id="retry-schedule-text">
-                        Memeriksa jadwal pengiriman ulang...
-                    </div>
+<!-- Status Pengiriman Otomatis -->
+<div class="section" style="margin-bottom: 1rem;">
+    <div
+        style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #f59e0b;">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <i class="bi bi-arrow-repeat" style="font-size: 1.5rem; color: #f59e0b;"></i>
+            <div>
+                <div style="font-weight: 600; color: #1f2937;" id="retry-status-text">
+                    <i class="bi bi-hourglass-split"></i> Memuat status...
+                </div>
+                <div style="font-size: 0.875rem; color: #6b7280;" id="retry-schedule-text">
+                    Memeriksa jadwal pengiriman ulang...
                 </div>
             </div>
-            <div style="display: flex; gap: 0.5rem;">
-                <button class="btn btn-primary" onclick="reloadRetryData()" title="Muat ulang data">
-                    <i class="bi bi-arrow-clockwise"></i> Reload
-                </button>
-                <button class="btn btn-success" onclick="manualRetryData()" id="manual-retry-btn" title="Kirim ulang data sekarang">
-                    <i class="bi bi-send-fill"></i> Kirim Ulang Manual
-                </button>
-            </div>
         </div>
     </div>
+</div>
 
-    <!-- Filter -->
-    <div class="filter-group" style="display: none;">
-        <div>
-            <label>Tanggal Mulai</label>
-            <input type="date" id="filter-retry-from" />
-        </div>
-        <div>
-            <label>Tanggal Akhir</label>
-            <input type="date" id="filter-retry-to" />
-        </div>
-        <div style="display: flex; gap: 0.5rem;">
-            <button class="filter-btn" onclick="filterretryData()">
-                <i class="bi bi-search"></i> Filter
-            </button>
-        </div>
+<!-- Filter -->
+<!-- Class filter-group mengatur layout Grid -->
+<div class="filter-group">
+    <div>
+        <label style="display:block; margin-bottom:0.25rem; font-weight:500;">Tanggal Mulai</label>
+        <input type="text" id="filter-retry-from" class="datepicker-datetime" placeholder="dd-mm-yyyy HH:mm" />
     </div>
+    <div>
+        <label style="display:block; margin-bottom:0.25rem; font-weight:500;">Tanggal Akhir</label>
+        <input type="text" id="filter-retry-to" class="datepicker-datetime" placeholder="dd-mm-yyyy HH:mm" />
+    </div>
+    <!-- Class filter-actions mengatur layout tombol -->
+    <div class="filter-actions">
+        <button class="filter-btn" onclick="filterRetryData()">
+            <i class="bi bi-search"></i> Filter
+        </button>
+        <button class="btn btn-primary" onclick="reloadRetryData()" title="Muat ulang data">
+            <i class="bi bi-arrow-clockwise"></i> Reload
+        </button>
+        <button class="btn btn-success" onclick="manualRetryData()" id="manual-retry-btn" title="Kirim ulang data sekarang">
+            <i class="bi bi-send-fill"></i> Kirim Ulang Manual
+        </button>
+    </div>
+</div>
 
-    <!-- Table -->
-    <div class="section">
-        <div class="table-container">
-            <div class="table-responsive">
-                <table class="table" id="retry-data-table">
-                    <thead>
-                        <tr>
-                            <th>No</th>
-                            <th>Tanggal</th>
-                            <th>pH</th>
-                            <th>ORP</th>
-                            <th>TDS</th>
-                            <th>DO</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="retry-data-body">
-                        <tr>
-                            <td colspan="7" class="text-center text-muted">
-                                <div class="loading">
-                                    <div class="loading-spinner"></div>
-                                    <p>Memuat data pengiriman ulang...</p>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+<!-- Table -->
+<div class="section">
+    <div class="table-container">
+        <div class="table-responsive">
+            <table class="table" id="retry-data-table">
+                <thead>
+                    <tr>
+                        <th>No</th>
+                        <th>Tanggal</th>
+                        <th>pH</th>
+                        <th>ORP</th>
+                        <th>TDS</th>
+                        <th>DO</th>
+                        <th>Status</th>
+                        <th>Keterangan</th>
+                    </tr>
+                </thead>
+                <tbody id="retry-data-body">
+                    <tr>
+                        <td colspan="8" class="text-center text-muted">
+                            <div class="loading">
+                                <div class="loading-spinner"></div>
+                                <p>Memuat data pengiriman ulang...</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
+</div>

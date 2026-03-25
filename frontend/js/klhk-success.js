@@ -180,7 +180,7 @@ async function loadKLHKSuccess() {
             let html = '';
             
             if (klhkDataRows.length === 0) {
-                html = '<tr><td colspan="5" class="text-center text-muted">Tidak ada data KLHK success</td></tr>';
+                html = '<tr><td colspan="7" class="text-center text-muted">Tidak ada data KLHK success</td></tr>';
             } else {
                 klhkDataRows.forEach((row, idx) => {
                     const date = formatDateCustom(row.timestamp || '');
@@ -196,6 +196,8 @@ async function loadKLHKSuccess() {
                     html += `<tr>
                         <td>${idx + 1}</td>
                         <td>${date}</td>
+                        <td>${row.date_send || ''}</td>
+                        <td>${row.row_send || ''}</td>
                         <td title="${payload.substring(0, 50)}"><code style="font-size: 0.85rem; word-break: break-word;">${safePayloadPreview}</code></td>
                         <td title="${response.substring(0, 50)}"><code style="font-size: 0.85rem; word-break: break-word;">${safeResponsePreview}</code></td>
                         <td>

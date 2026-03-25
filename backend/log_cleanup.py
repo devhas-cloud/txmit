@@ -21,6 +21,33 @@ LOG_FILES = {
 MAX_LINES = 1000
 INTERVAL_SECONDS = 24 * 60 * 60  # 1 hari
 
+def cleanup_backup_files(filepath):
+    """Hapus file backup seperti has-send.log.1, has-send.log.2, dst"""
+    try:
+        log_dir = os.path.dirname(filepath)
+        log_filename = os.path.basename(filepath)
+        
+        # Cari semua file backup
+        backup_files = []
+        for filename in os.listdir(log_dir):
+            if filename.startswith(log_filename + '.') and filename[len(log_filename)+1:].isdigit():
+                backup_path = os.path.join(log_dir, filename)
+                backup_files.append(backup_path)
+        
+        # Hapus semua file backup yang ditemukan
+        for backup_file in backup_files:
+            try:
+                os.remove(backup_file)
+                print(f"[{datetime.now()}] removed backup file: {backup_file}")
+            except Exception as e:
+                print(f"[{datetime.now()}] error removing {backup_file}: {e}")
+        
+        if backup_files:
+            print(f"[{datetime.now()}] cleaned {len(backup_files)} backup file(s) for {filepath}")
+    
+    except Exception as e:
+        print(f"[{datetime.now()}] error cleanup backups for {filepath}: {e}")
+
 def cleanup_log_file(filepath, max_lines):
     if not os.path.exists(filepath):
         return
@@ -46,6 +73,7 @@ def main():
     while True:
         for filepath in LOG_FILES.values():
             cleanup_log_file(filepath, MAX_LINES)
+            cleanup_backup_files(filepath)
 
         print(f"[{datetime.now()}] 💤 sleep 24 hours")
         time.sleep(INTERVAL_SECONDS)

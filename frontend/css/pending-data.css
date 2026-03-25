@@ -1,10 +1,260 @@
 /* =========================================
-   PENDING DATA SECTION STYLES
+   PENDING DATA SECTION STYLES (IMPROVED)
    ========================================= */
 
-.pending-data-section {
-    /* Inherits common styles from style.css */
+
+/* --- 2. Input Datepicker --- */
+.datepicker-datetime {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    /* Sedikit lebih besar untuk sentuhan jari */
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: #1f2937;
+    background-color: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    /* Indikasi bisa diklik */
 }
 
-/* Specific styling for pending data if needed */
+.datepicker-datetime:focus {
+    border-color: #4f46e5;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
 
+.datepicker-datetime::placeholder {
+    color: #9ca3af;
+}
+
+/* --- 3. Button Actions --- */
+.filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    /* Pastikan tombol tidak mengecil drastis */
+    flex-wrap: wrap;
+}
+
+/* Base Button Style */
+.btn,
+.filter-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    white-space: nowrap;
+    /* Mencegah tombol mengecil (shrink) di dalam flex container */
+    flex-shrink: 0;
+}
+
+/* Tombol Filter (Secondary/Grey) */
+.filter-btn {
+    background-color: #f3f4f6;
+    color: #374151;
+    border-color: #d1d5db;
+}
+
+.filter-btn:hover {
+    background-color: #e5e7eb;
+    color: #111827;
+}
+
+/* Tombol Primary (Blue) */
+.btn-primary {
+    background-color: #4f46e5;
+    color: white;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.btn-primary:hover {
+    background-color: #4338ca;
+    transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+/* Tombol Success (Green) */
+.btn-success {
+    background-color: #10b981;
+    color: white;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.btn-success:hover {
+    background-color: #059669;
+    transform: translateY(-1px);
+}
+
+.btn-success:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* --- 4. Status Card --- */
+/* Pastikan div status di HTML memiliki class="status-card" */
+.status-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 5px solid #4f46e5;
+    /* Indikator status lebih tebal */
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.status-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Responsive: Pada layar kecil, stack konten status */
+@media (max-width: 640px) {
+    .status-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .status-card>*:last-child {
+        width: 100%;
+        text-align: left;
+    }
+}
+
+/* --- 5. Table Styling --- */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    /* Styling scrollbar agar lebih rapi (Chrome/Safari/Webkit) */
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+.table-responsive::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 4px;
+    border: 2px solid #f1f5f9;
+}
+
+.table {
+    width: 100%;
+    min-width: 800px;
+    /* Lebar minimum agar tabel tidak gepeng */
+    border-collapse: collapse;
+    background-color: #fff;
+    font-size: 0.9rem;
+}
+
+.table thead th {
+    position: sticky;
+    /* Header tetap di atas saat scroll */
+    top: 0;
+    z-index: 10;
+    background-color: #f9fafb;
+    color: #4b5563;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    padding: 0.875rem 1rem;
+    text-align: left;
+    border-bottom: 2px solid #e5e7eb;
+    white-space: nowrap;
+    /* Judul kolom tidak turun baris */
+}
+
+.table tbody tr {
+    border-bottom: 1px solid #f3f4f6;
+    transition: background-color 0.15s;
+}
+
+.table tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+.table tbody td {
+    padding: 0.875rem 1rem;
+    color: #374151;
+    vertical-align: middle;
+}
+
+/* Badge Styling */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badge-pending {
+    background-color: #fef3c7;
+    color: #d97706;
+}
+
+/* --- 6. jQuery DateTime Picker Overrides --- */
+.xdsoft_datetimepicker {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.xdsoft_datetimepicker .xdsoft_label i,
+.xdsoft_datetimepicker .xdsoft_label>.xdsoft_select {
+    border-color: #e5e7eb;
+}
+
+.xdsoft_datetimepicker .xdsoft_today_button {
+    color: #4f46e5;
+}
+
+.xdsoft_datetimepicker .xdsoft_today_button:hover {
+    background-color: #eff6ff;
+}
+
+.xdsoft_datetimepicker .xdsoft_month,
+.xdsoft_datetimepicker .xdsoft_year {
+    color: #374151;
+    font-weight: 600;
+}
+
+/* Warna saat tanggal dipilih */
+.xdsoft_datetimepicker .xdsoft_calendar td.xdsoft_current,
+.xdsoft_datetimepicker .xdsoft_calendar td.xdsoft_selected {
+    background-color: #4f46e5 !important;
+    box-shadow: none;
+    color: #fff;
+}

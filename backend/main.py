@@ -52,6 +52,7 @@ COLUMN_MAP = {
     "nh3n - measured": "nh3n",
     "battery - measured": "battery",
     "depth - measured": "depth",
+    "debit - measured": "flow",
     "flow - measured": "flow",
     "total flow": "tflow",
     "turbidity - measured": "turb",
@@ -250,7 +251,8 @@ def prosesCsv():
             except Exception as e:
                 write_log(f"Gagal menghapus {display_name}: {e}")
         else:
-            write_log(f"File {display_name} gagal diproses → tetap disimpan untuk retry.")
+            os.remove(processing_path)
+            #write_log(f"File {display_name} gagal diproses → tetap disimpan untuk retry.")
 
 
 # ======================================================

@@ -59,12 +59,10 @@ function refreshDashboardData() {
 }
 
 function refreshPendingAndRetryData() {
-    const pendingDataSection = document.getElementById('pending-data-section');
-    if (pendingDataSection && pendingDataSection.style.display !== 'none' && typeof loadPendingData === 'function') {
-        loadPendingData();
-        if (typeof loadSendStatus === 'function') loadSendStatus();
-    }
-
+    // Note: Auto-reload removed for pending-data section on user request
+    // Users must manually click Reload or Filter buttons to refresh
+    // But retry section still auto-refreshes
+    
     const retrySection = document.getElementById('retry-section');
     if (retrySection && retrySection.style.display !== 'none' && typeof loadRetryData === 'function') {
         loadRetryData();
@@ -217,18 +215,27 @@ function showSection(sectionName) {
             const section = document.getElementById('pending-data-section');
             if (section) section.style.display = 'block';
             activeItem = document.querySelector('[data-section="pending-data"]');
-            // Set default date filters (1 day)
-            setDefaultDateFilters('filter-pending-from', 'filter-pending-to');
             loadPendingData({ notify: true });
             if (typeof loadSendStatus === 'function') loadSendStatus();
+            // Initialize datepicker for pending data section
+            setTimeout(() => {
+                if (typeof initDatetimePicker === 'function') {
+                    initDatetimePicker();
+                }
+            }, 100);
         } else if (sectionName === 'retry') {
             const section = document.getElementById('retry-section');
             if (section) section.style.display = 'block';
             activeItem = document.querySelector('[data-section="retry"]');
-            // Set default date filters (1 day)
-            setDefaultDateFilters('filter-retry-from', 'filter-retry-to');
             loadRetryData();
             if (typeof loadRetryStatus === 'function') loadRetryStatus();
+            // Initialize datepicker for retry data section
+            setTimeout(() => {
+                if (typeof initDatetimePicker === 'function') {
+                    initDatetimePicker();
+                }
+            }, 100);
+
         } else if (sectionName === 'klhk-success') {
             const section = document.getElementById('klhk-success-section');
             if (section) section.style.display = 'block';

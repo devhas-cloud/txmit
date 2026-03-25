@@ -272,7 +272,11 @@ def cekTable():
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 timestamp DATETIME,
                 payload TEXT,
-                response TEXT
+                response TEXT,
+                date_send TEXT DEFAULT NULL,
+                row_send INT DEFAULT 0,
+                status BOOLEAN DEFAULT 0
+
             )
         ''')
         conn.commit()
@@ -399,18 +403,18 @@ def ambilDataTerakhir(param_field):
     
     return row[0]
 
-def insert_data_klhk_success(timestamp, payload, response):
+def insert_data_klhk_success(timestamp, payload, response, date_send=None, row_send=0, status=False):
     try:
         MYSQL_CONFIG = mysqlConfig()
         conn = mysql.connector.connect(**MYSQL_CONFIG)
         cursor = conn.cursor()
 
         query = """
-        INSERT INTO klhk_json_encode_success (timestamp, payload, response)
-        VALUES (%s, %s, %s);
+        INSERT INTO klhk_json_encode_success (timestamp, payload, response, date_send, row_send, status)
+        VALUES (%s, %s, %s, %s, %s, %s);
         """
 
-        values = (timestamp, payload, response)
+        values = (timestamp, payload, response, date_send, row_send, status)
         cursor.execute(query, values)
         conn.commit()
 

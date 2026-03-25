@@ -64,9 +64,8 @@ async function filterAllData() {
                     });
                     
                     // Status klhk
-                    const status_klhk = row.status === '' || row.klhk_status == null
-                        ? '<span class="badge badge-pending">Pending</span>' :
-                        '<span class="badge badge-success">Sent</span>';
+                    const status_klhk = row.status === 'terkirim' 
+                        ? '<span class="badge badge-success">Sent</span>' : '<span class="badge badge-pending">Pending</span>';
                         ;
                     html += `<td>${status_klhk}</td>`;
 

@@ -248,7 +248,7 @@ def get_retry_status():
 @app.route('/api/retry/manual', methods=['POST'])
 @login_required
 def manual_retry():
-    """Trigger manual KLHK retry data sending"""
+    """Trigger manual KLHK retry data sending with optional date range"""
     try:
         from config import loadConfig
         config = loadConfig()
@@ -260,12 +260,27 @@ def manual_retry():
                 'error': 'KLHK retry module is not active. Please enable it in configuration.'
             }), 400
         
+        # Extract optional date parameters from request
+        request_data = request.get_json(force=True, silent=True) or {}
+        date_from = request_data.get('date_from')
+        date_to = request_data.get('date_to')
+        
         # Check if there's data to retry
         try:
             mysql_config = mysqlConfig()
             conn = mysql.connector.connect(**mysql_config)
             cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM tmp WHERE status='retry'")
+            
+            # Build COUNT query based on whether date filters are provided
+            if date_from and date_to:
+                cursor.execute("SELECT COUNT(*) FROM tmp WHERE status='retry' AND `date` >= %s AND `date` <= %s", (date_from, date_to))
+                operation_type = "filtered"
+                print(f"[RETRY] Counting filtered data: from {date_from} to {date_to}")
+            else:
+                cursor.execute("SELECT COUNT(*) FROM tmp WHERE status='retry'")
+                operation_type = "all"
+                print(f"[RETRY] Counting all retry data")
+            
             retry_count = cursor.fetchone()[0]
             cursor.close()
             conn.close()
@@ -278,6 +293,7 @@ def manual_retry():
         except Exception as db_error:
             # If DB check fails, continue anyway
             retry_count = 0
+            print(f"[RETRY] DB check failed: {db_error}")
         
         # Import and run the retry function
         import sys
@@ -296,7 +312,7 @@ def manual_retry():
                 
                 try:
                     reload_config()  # Reload config to ensure STATUS is active
-                    ambil_data()
+                    ambil_data(date_from=date_from, date_to=date_to)
                 finally:
                     log_file.flush()
                     log_file.close()
@@ -309,8 +325,11 @@ def manual_retry():
             thread.daemon = True
             thread.start()
             
+            print(f"[RETRY] Manual retry triggered - count: {retry_count}, type: {operation_type}")
             return jsonify({
                 'success': True,
+                'count': retry_count,
+                'type': operation_type,
                 'message': f'Pengiriman ulang manual berhasil dipicu untuk {retry_count} data. Periksa log untuk detail.'
             }), 200
             
@@ -384,7 +403,7 @@ def get_klhk_success():
         
         # Get data dari tabel klhk_json_encode_success
         query = """
-        SELECT * FROM klhk_json_encode_success 
+        SELECT * FROM klhk_json_encode_success
         ORDER BY timestamp DESC 
         LIMIT 1000
         """
@@ -445,7 +464,7 @@ def get_data_stats():
         sent = sent_row['sent'] if sent_row else 0
         
         # KLHK success
-        cursor.execute("SELECT COUNT(*) as klhk_success FROM klhk_json_encode_success")
+        cursor.execute("SELECT COUNT(*) as klhk_success FROM klhk_json_encode_success WHERE status = 1")
         klhk_row = cursor.fetchone()
         klhk_success = klhk_row['klhk_success'] if klhk_row else 0
         
@@ -534,22 +553,49 @@ def manual_send():
                 'error': 'KLHK send module is not active. Please enable it in configuration.'
             }), 400
         
+        # Extract optional date range from request (handle empty/malformed body)
+        try:
+            request_data = request.get_json(force=True, silent=True) or {}
+        except Exception as json_error:
+            print(f"[SEND] JSON parse error: {str(json_error)}, using empty dict")
+            request_data = {}
+        
+        date_from = request_data.get('date_from')
+        date_to = request_data.get('date_to')
+        
+        print(f"[SEND] Manual send triggered. date_from={date_from}, date_to={date_to}")
+        
         # Check if there's data to send
         try:
             mysql_config = mysqlConfig()
             conn = mysql.connector.connect(**mysql_config)
             cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM tmp WHERE status IS NULL OR status = ''")
+            
+            # Count data with optional date range filter
+            if date_from and date_to:
+                cursor.execute(
+                    "SELECT COUNT(*) FROM tmp WHERE (status IS NULL OR status = '') AND `date` >= %s AND `date` <= %s",
+                    [date_from, date_to]
+                )
+                print(f"[SEND] Filtering count with date_from={date_from}, date_to={date_to}")
+            else:
+                cursor.execute("SELECT COUNT(*) FROM tmp WHERE status IS NULL OR status = ''")
+                print(f"[SEND] Counting all pending data (no date filter)")
+            
             pending_count = cursor.fetchone()[0]
             cursor.close()
             conn.close()
             
             if pending_count == 0:
+                error_msg = 'Tidak ada data pending untuk dikirim dalam range tanggal tersebut.' if (date_from and date_to) else 'Tidak ada data pending untuk dikirim. Silakan periksa data di tabel.'
                 return jsonify({
                     'success': False,
-                    'error': 'Tidak ada data pending untuk dikirim. Silakan periksa data di tabel.'
+                    'error': error_msg
                 }), 400
+            
+            print(f"[SEND] Found {pending_count} rows to send")
         except Exception as db_error:
+            print(f"[SEND] Database error during count: {str(db_error)}")
             # If DB check fails, continue anyway
             pending_count = 0
         
@@ -570,7 +616,8 @@ def manual_send():
                 
                 try:
                     update_config()  # Reload config to ensure STATUS is active
-                    ambil_data()
+                    # Pass date parameters to ambil_data if provided
+                    ambil_data(date_from=date_from, date_to=date_to)
                 finally:
                     log_file.flush()
                     log_file.close()
@@ -583,18 +630,23 @@ def manual_send():
             thread.daemon = True
             thread.start()
             
+            send_type = 'filtered' if (date_from and date_to) else 'all'
             return jsonify({
                 'success': True,
-                'message': f'Pengiriman manual berhasil dipicu untuk {pending_count} data. Periksa log untuk detail.'
+                'message': f'Pengiriman manual {send_type} berhasil dipicu untuk {pending_count} data. Periksa log untuk detail.',
+                'count': pending_count,
+                'type': send_type
             }), 200
             
         except Exception as send_error:
+            print(f"[SEND] Error triggering send: {str(send_error)}")
             return jsonify({
                 'success': False,
                 'error': f'Failed to trigger send: {str(send_error)}'
             }), 500
     
     except Exception as e:
+        print(f"[SEND] Unexpected error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -613,13 +665,15 @@ def filter_data():
         table = data.get('table', 'data')  # 'data' atau 'klhk'
         date_from = data.get('date_from')
         date_to = data.get('date_to')
-        device = data.get('device')
-        status = data.get('status')
         
         params = []
         
+        # Debug logging
+        print(f"[FILTER] Table: {table}, Date From: {date_from}, Date To: {date_to}")
+        
         if table == 'data':
-            query = "SELECT * FROM tmp WHERE 1=1"
+            # Filter pending data (belum terkirim) - query dari tmp table
+            query = "SELECT * FROM tmp WHERE (status IS NULL OR status = '')"
             
             if date_from:
                 query += " AND `date` >= %s"
@@ -627,12 +681,6 @@ def filter_data():
             if date_to:
                 query += " AND `date` <= %s"
                 params.append(date_to)
-            if device:
-                query += " AND device = %s"
-                params.append(device)
-            if status:
-                query += " AND status = %s"
-                params.append(status)
             
             query += " ORDER BY `date` DESC LIMIT 1000"
         
@@ -648,8 +696,13 @@ def filter_data():
             
             query += " ORDER BY timestamp DESC LIMIT 1000"
         
+        print(f"[FILTER] Query: {query}")
+        print(f"[FILTER] Params: {params}")
+        
         cursor.execute(query, params)
         rows = cursor.fetchall()
+        
+        print(f"[FILTER] Result count: {len(rows)}")
         
         # Convert datetime
         for row in rows:
@@ -660,13 +713,23 @@ def filter_data():
         cursor.close()
         conn.close()
         
+        # Load klhk_fields from config
+        from config import loadConfig
+        config = loadConfig()
+        klhk_fields = config.get('klhk_fields', 'datetime,pH,cod,tss,nh3n,flow')
+        
         return jsonify({
             'success': True,
             'count': len(rows),
-            'data': rows
+            'taggal': f"{date_from} s/d {date_to}",
+            'data': rows,
+            'klhk_fields': klhk_fields
         }), 200
     
     except Exception as e:
+        print(f"[FILTER ERROR] {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

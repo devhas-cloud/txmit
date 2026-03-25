@@ -77,7 +77,7 @@ def write_log(message):
 def get_jwt_token():
     global API_JWT
     try:
-        response = requests.get(API_JWT, timeout=(5, 15))
+        response = requests.get(API_JWT)
         if response.status_code == 200:
             jwt_token = response.text.strip()
             if jwt_token:
@@ -89,13 +89,17 @@ def get_jwt_token():
         write_log(f"❌ Error koneksi token API: {e}")
         return None
 
-def ambil_data():
+def ambil_data(date_from=None, date_to=None):
     global duplicate_attempt, FIELDS, STATUS, MYSQL_CONFIG, tz
     duplicate_attempt = 0  # Reset duplicate attempt setiap kali ambil data
-    now = datetime.now(tz)
+
+    now = datetime.now(tz).replace(second=0, microsecond=0) # selalu di detik 00
+    now = now.strftime("%Y-%m-%d %H:%M:%S")
     grouped_data = defaultdict(list)
     
     write_log(f"🚀 Fungsi ambil_data() dipanggil - STATUS: {STATUS}")
+    if date_from or date_to:
+        write_log(f"📅 Filter date_from: {date_from}, date_to: {date_to}")
     
     # Check if STATUS is active (important for scheduled runs, but manual runs should proceed)
     if STATUS.lower() != "active":
@@ -106,11 +110,25 @@ def ambil_data():
         with mysql.connector.connect(**MYSQL_CONFIG) as conn:
             with conn.cursor() as cursor:
                 query_fields = ", ".join(["`date`"] + FIELDS)
-                query = f"SELECT {query_fields} FROM tmp WHERE status IS NULL AND `date` < %s"
+                
+                # Build query with optional date range filter
+                params = []
+                query = f"SELECT {query_fields} FROM tmp WHERE status IS NULL"
+                
+                # Add date range filter if provided
+                if date_from and date_to:
+                    query += " AND `date` >= %s AND `date` <= %s"
+                    params.extend([date_from, date_to])
+                else:
+                    # Default: only send data before current hour
+                    query += " AND `date` < %s"
+                    params.append(now)
+                
+                query += " ORDER BY id ASC"
                 write_log(f"🔍 Mencari data pending dengan query: {query}")
-                cursor.execute(query, [now])
+                write_log(f"📊 Query parameters: {params}")
+                cursor.execute(query, params)
                 rows = cursor.fetchall()
-
         
                 write_log(f"📊 Ditemukan {len(rows)} baris data pending")
                 if not rows:
@@ -144,6 +162,7 @@ def ambil_data():
 def send_data_to_api(data, start, end):
     global duplicate_attempt, FIELDS, MYSQL_CONFIG, UID, MAX_DUP_RETRY, API_ENDPOINT, tz
     
+    now = datetime.now(tz)
     if not data:
         write_log("ℹ️ Tidak ada data baru.")
         return
@@ -171,7 +190,7 @@ def send_data_to_api(data, start, end):
             return
 
         headers = {'Authorization': f'Bearer {key_token}', 'Content-Type': 'application/json'}
-        response = requests.post(API_ENDPOINT, json={"token": encoded}, headers=headers, timeout=(5, 60))
+        response = requests.post(API_ENDPOINT, json={"token": encoded}, headers=headers, timeout=(3300, 3300))
         result = response.json()
 
         write_log(f"API Response : {response.text}")
@@ -183,36 +202,42 @@ def send_data_to_api(data, start, end):
                     cursor.execute("INSERT INTO `data` SELECT * FROM tmp WHERE `date` >=%s AND `date` <=%s", [start, end])
                     cursor.execute("DELETE FROM tmp WHERE `date` >=%s AND `date` <=%s", [start, end])
                     conn.commit()
-                    insert_data_klhk_success(now, encoded, response.text)
+                    insert_data_klhk_success(now, encoded, response.text, f'{start} - {end}' , row_send=len(data), status=True)
                     write_log("✅ Data berhasil dikirim & diproses.")
 
                 else:
+                    insert_data_klhk_success(now, encoded, response.text, f'{start} - {end}' , row_send=len(data), status=False)
                     desc = result.get("desc", "unknown error")
                     write_log(f"⚠️ Gagal kirim: {desc}")
-                    if "duplikasi" in desc.lower():
-                        duplicate_attempt += 1
-                        if duplicate_attempt >= MAX_DUP_RETRY:
-                            cursor.execute("UPDATE tmp SET status='Duplikasi', keterangan='Manual check' WHERE `date` >=%s AND `date` <=%s", [start, end])
-                            conn.commit()
-                            write_log("⚠️ Duplikasi berulang. Pengiriman dihentikan.")
-                            return
+                    
+                    cursor.execute("UPDATE tmp SET status='retry', keterangan=%s WHERE `date` >=%s AND `date` <=%s", [desc, start, end])
+                    conn.commit()
 
-                        for ts in result.get("data", []):
-                            cursor.execute("DELETE FROM tmp WHERE `date` = %s", [ts])
-                            write_log(f"🗑️ Hapus duplikat: {ts}")
-                        conn.commit()
+                    # Matikan Fungsi duplikasi sementara untuk menghindari loop tak berujung
+                    # if "duplikasi" in desc.lower():
+                    #     duplicate_attempt += 1
+                    #     if duplicate_attempt >= MAX_DUP_RETRY:
+                    #         cursor.execute("UPDATE tmp SET status='Duplikasi', keterangan='Manual check' WHERE `date` >=%s AND `date` <=%s", [start, end])
+                    #         conn.commit()
+                    #         write_log("⚠️ Duplikasi berulang. Pengiriman dihentikan.")
+                    #         return
 
-                        # Re-fetch & resend
-                        cursor.execute(f"SELECT {', '.join(FIELDS)} FROM tmp WHERE `date` >=%s AND `date` <=%s", [start, end])
-                        rows = cursor.fetchall()
-                        if rows:
-                            data_cleaned = [dict(zip(FIELDS, row)) for row in rows]
-                            send_data_to_api(data_cleaned, start, end)
-                        else:
-                            write_log("ℹ️ Tidak ada data tersisa setelah hapus duplikat.")
-                    else:
-                        cursor.execute("UPDATE tmp SET status='retry', keterangan=%s WHERE `date` >=%s AND `date` <=%s", [desc, start, end])
-                        conn.commit()
+                    #     for ts in result.get("data", []):
+                    #         cursor.execute("DELETE FROM tmp WHERE `date` = %s", [ts])
+                    #         write_log(f"🗑️ Hapus duplikat: {ts}")
+                    #     conn.commit()
+
+                    #     # Re-fetch & resend
+                    #     cursor.execute(f"SELECT {', '.join(FIELDS)} FROM tmp WHERE `date` >=%s AND `date` <=%s", [start, end])
+                    #     rows = cursor.fetchall()
+                    #     if rows:
+                    #         data_cleaned = [dict(zip(FIELDS, row)) for row in rows]
+                    #         send_data_to_api(data_cleaned, start, end)
+                    #     else:
+                    #         write_log("ℹ️ Tidak ada data tersisa setelah hapus duplikat.")
+                    # else:
+                    #     cursor.execute("UPDATE tmp SET status='retry', keterangan=%s WHERE `date` >=%s AND `date` <=%s", [desc, start, end])
+                    #     conn.commit()
 
     except Exception as e:
         write_log(f"❌ Error kirim data: {e}")

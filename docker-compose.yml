@@ -7,6 +7,7 @@ services:
     network_mode: "host"
     volumes:
       - ./:/app
+      - /var/www/html/FTP:/app/csv
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     restart: always

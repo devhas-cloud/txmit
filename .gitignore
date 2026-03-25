@@ -3,5 +3,6 @@ log/
 logs/*.log
 config/*.db
 backend/__pycache__/
+klhk/__pycache__/
 supervisord.pid
 csv/*.csv
