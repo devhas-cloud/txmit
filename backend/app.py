@@ -403,6 +403,43 @@ def get_klhk_success():
         
         # Get data dari tabel klhk_json_encode_success
         query = """
+        SELECT * FROM klhk_json_encode_success WHERE status = 1
+        ORDER BY timestamp DESC 
+        LIMIT 10
+        """
+        
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        
+        cursor.close()
+        conn.close()
+        
+        # Convert datetime objects to strings
+        for row in rows:
+            if isinstance(row.get('timestamp'), datetime):
+                row['timestamp'] = row['timestamp'].isoformat()
+        
+        return jsonify({
+            'success': True,
+            'count': len(rows),
+            'data': rows
+        }), 200
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/data/klhk-logs', methods=['GET'])
+@login_required
+def get_klhk_logs():
+    """Mendapatkan data pengiriman KLHK yang berhasil"""
+    try:
+        mysql_config = mysqlConfig()
+        conn = mysql.connector.connect(**mysql_config)
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get data dari tabel klhk_json_encode_success
+        query = """
         SELECT * FROM klhk_json_encode_success
         ORDER BY timestamp DESC 
         LIMIT 1000
@@ -427,6 +464,7 @@ def get_klhk_success():
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @app.route('/api/data/stats', methods=['GET'])
 @login_required
@@ -469,7 +507,7 @@ def get_data_stats():
         klhk_success = klhk_row['klhk_success'] if klhk_row else 0
         
         # Last sync
-        cursor.execute("SELECT MAX(timestamp) as last_sync FROM klhk_json_encode_success")
+        cursor.execute("SELECT MAX(timestamp) as last_sync FROM klhk_json_encode_success WHERE status = 1")
         last_sync_row = cursor.fetchone()
         if last_sync_row and last_sync_row['last_sync']:
             last_sync = last_sync_row['last_sync'].isoformat() if isinstance(last_sync_row['last_sync'], datetime) else str(last_sync_row['last_sync'])

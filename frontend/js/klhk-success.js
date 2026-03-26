@@ -167,7 +167,7 @@ function showJWTInfoModal(payload) {
 // Load KLHK success full
 async function loadKLHKSuccess() {
     try {
-        const response = await fetch('/api/data/klhk-success');
+        const response = await fetch('/api/data/klhk-logs');
         const data = await response.json();
         
         console.log('KLHK Success Data:', data);
