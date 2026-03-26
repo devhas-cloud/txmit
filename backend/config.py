@@ -288,6 +288,7 @@ def cekTable():
 def check_duplicate_data(device, date, table='tmp'):
     """
     Cek apakah data dengan device dan date yang sama sudah ada di database.
+    Mengabaikan detik dalam perbandingan (hanya membandingkan sampai menit).
     
     Args:
         device: ID device
@@ -306,7 +307,7 @@ def check_duplicate_data(device, date, table='tmp'):
         for tbl in ['tmp', 'data']:
             query = f"""
                 SELECT COUNT(*) FROM {tbl}
-                WHERE device = %s AND date = %s
+                WHERE device = %s AND DATE_FORMAT(date, '%Y-%m-%d %H:%i') = DATE_FORMAT(%s, '%Y-%m-%d %H:%i')
             """
             cursor.execute(query, (device, date))
             result = cursor.fetchone()
