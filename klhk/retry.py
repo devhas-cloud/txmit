@@ -85,11 +85,7 @@ def write_log(message):
 
 def get_jwt_token():
     try:
-<<<<<<< HEAD
         response = requests.get(API_JWT, timeout=(5,10))
-=======
-        response = requests.get(API_JWT, timeout=(5, 15))
->>>>>>> 0bae5c2 (time out)
         if response.status_code == 200:
             jwt_token = response.text.strip()
             if jwt_token:
