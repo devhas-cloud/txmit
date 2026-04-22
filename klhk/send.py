@@ -191,7 +191,11 @@ def send_data_to_api(data, start, end):
             return
 
         headers = {'Authorization': f'Bearer {key_token}', 'Content-Type': 'application/json'}
+<<<<<<< HEAD
         response = requests.post(API_ENDPOINT, json={"token": encoded}, headers=headers, timeout=(10, 60))
+=======
+        response = requests.post(API_ENDPOINT, json={"token": encoded}, headers=headers, timeout=(15, 60))
+>>>>>>> 0bae5c2 (time out)
         result = response.json()
 
         write_log(f"API Response : {response.text}")
