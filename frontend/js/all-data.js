@@ -37,7 +37,7 @@ async function filterAllData() {
             
             // Render filtered data
             let html = '';
-            let headerHtml = '<th>No</th><th>Tanggal</th>';
+            let headerHtml = '<th>No</th><th>Create At</th><th>Tanggal</th>';
             
             // Build dynamic headers
             has_fields.forEach(field => {
@@ -52,10 +52,13 @@ async function filterAllData() {
                 data.data.forEach((row, idx) => {
                     const datetimeValue = getFieldValue(row, 'datetime') || getFieldValue(row, 'date');
                     const tanggal = formatDateCustom(datetimeValue);
+                    const createdAt = formatDateCustom(getFieldValue(row, 'created_at') || getFieldValue(row, 'createdat') || getFieldValue(row, 'created'));
                     
                     html += `<tr>
                         <td>${idx + 1}</td>
+                        <td>${createdAt}</td>
                         <td>${tanggal}</td>`;
+
                     
                     has_fields.forEach(field => {
                         const value = getFieldValue(row, field);

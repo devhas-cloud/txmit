@@ -188,13 +188,14 @@ async function loadKLHKSuccess() {
                     const response = row.response || '';
                     const payloadPreview = payload ? payload.substring(0, 100) + (payload.length > 100 ? '...' : '') : '-';
                     const responsePreview = response ? response.substring(0, 100) + (response.length > 100 ? '...' : '') : '-';
-                    
+                    const category = row.category.toUpperCase() || '-';
                     // Escape HTML in preview
                     const safePayloadPreview = payloadPreview.replace(/</g, '&lt;').replace(/>/g, '&gt;');
                     const safeResponsePreview = responsePreview.replace(/</g, '&lt;').replace(/>/g, '&gt;');
                     
                     html += `<tr>
                         <td>${idx + 1}</td>
+                        <td>${category}</td>
                         <td>${date}</td>
                         <td>${row.date_send || ''}</td>
                         <td>${row.row_send || ''}</td>
@@ -219,11 +220,11 @@ async function loadKLHKSuccess() {
             }
         } else {
             console.error('API response error:', data);
-            document.getElementById('klhk-success-body').innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error: Tidak ada data atau response error</td></tr>';
+            document.getElementById('klhk-success-body').innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error: Tidak ada data atau response error</td></tr>';
         }
     } catch (error) {
         console.error('Error loading KLHK success:', error);
-        document.getElementById('klhk-success-body').innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error loading data: ' + error.message + '</td></tr>';
+        document.getElementById('klhk-success-body').innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error loading data: ' + error.message + '</td></tr>';
     }
 }
 

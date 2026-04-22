@@ -81,12 +81,12 @@ def get_jwt_token():
         if response.status_code == 200:
             jwt_token = response.text.strip()
             if jwt_token:
-                write_log(f"✅ Token JWT didapatkan : {jwt_token}")
+                write_log(f"Token JWT didapatkan : {jwt_token}")
                 return jwt_token
-        write_log(f"❌ Gagal dapatkan token, status code: {response.status_code}")
+        write_log(f"Gagal dapatkan token, status code: {response.status_code}")
         return None
     except requests.exceptions.RequestException as e:
-        write_log(f"❌ Error koneksi token API: {e}")
+        write_log(f"Error koneksi token API: {e}")
         return None
 
 def ambil_data(date_from=None, date_to=None):
@@ -97,16 +97,16 @@ def ambil_data(date_from=None, date_to=None):
     now = now.strftime("%Y-%m-%d %H:%M:%S")
     grouped_data = defaultdict(list)
     
-    write_log(f"🚀 Fungsi ambil_data() dipanggil - STATUS: {STATUS}")
+    write_log(f"Fungsi ambil_data() dipanggil - STATUS: {STATUS}")
     if date_from or date_to:
-        write_log(f"📅 Filter date_from: {date_from}, date_to: {date_to}")
+        write_log(f"Filter date_from: {date_from}, date_to: {date_to}")
     
     # Check if STATUS is active (important for scheduled runs, but manual runs should proceed)
     if STATUS.lower() != "active":
-        write_log("⚠️ PERINGATAN: KLHK Send status tidak aktif, namun melanjutkan karena manual trigger")
+        write_log("PERINGATAN: KLHK Send status tidak aktif, namun melanjutkan karena manual trigger")
 
     try:
-        write_log(f"📡 Menghubungkan ke database...")
+        write_log(f"Menghubungkan ke database...")
         with mysql.connector.connect(**MYSQL_CONFIG) as conn:
             with conn.cursor() as cursor:
                 query_fields = ", ".join(["`date`"] + FIELDS)
@@ -125,14 +125,14 @@ def ambil_data(date_from=None, date_to=None):
                     params.append(now)
                 
                 query += " ORDER BY id ASC"
-                write_log(f"🔍 Mencari data pending dengan query: {query}")
-                write_log(f"📊 Query parameters: {params}")
+                write_log(f"Mencari data pending dengan query: {query}")
+                write_log(f"Query parameters: {params}")
                 cursor.execute(query, params)
                 rows = cursor.fetchall()
         
-                write_log(f"📊 Ditemukan {len(rows)} baris data pending")
+                write_log(f"Ditemukan {len(rows)} baris data pending")
                 if not rows:
-                    write_log("ℹ️ Tidak ada data pending untuk dikirim.")
+                    write_log("Tidak ada data pending untuk dikirim.")
                     return
 
                 for row in rows:
@@ -152,22 +152,22 @@ def ambil_data(date_from=None, date_to=None):
                         item = {("debit" if field == "flow" else field): row_dict[field] for field in FIELDS}
                         payload.append(item)
 
-                    write_log(f"📊 Mengumpulkan data jam {start} - {end} dengan {len(payload)} entri")
+                    write_log(f"Mengumpulkan data jam {start} - {end} dengan {len(payload)} entri")
                     send_data_to_api(payload, start, end)
     except mysql.connector.Error as e:
-        write_log(f"❌ DB Error: {e}")
+        write_log(f"DB Error: {e}")
     except Exception as e:
-        write_log(f"❌ Error ambil_data: {e}")
+        write_log(f"Error ambil_data: {e}")
 
 def send_data_to_api(data, start, end):
     global duplicate_attempt, FIELDS, MYSQL_CONFIG, UID, MAX_DUP_RETRY, API_ENDPOINT, tz
     
     now = datetime.now(tz)
     if not data:
-        write_log("ℹ️ Tidak ada data baru.")
+        write_log("Tidak ada data baru.")
         return
 
-    write_log(f"🚀 Mengirim data jam {start} - {end}")
+    write_log(f"Mengirim data jam {start} - {end}")
     try:
         key_token = get_jwt_token()
         if not key_token:
@@ -175,7 +175,8 @@ def send_data_to_api(data, start, end):
                 with conn.cursor() as cursor:
                     cursor.execute("UPDATE tmp SET status='retry', keterangan='Gagal dapat token JWT' WHERE `date` >=%s AND `date` <=%s", [start, end])
                     conn.commit()
-            write_log("❌ Gagal dapat token JWT.")
+            write_log("Gagal dapat token JWT.")
+            insert_data_klhk_success(now, None, "Gagal dapat token JWT", f'{start} - {end}' , row_send=len(data), status=False, category="send")
             return
 
         payload = {"uid": UID, "data": data}
@@ -183,10 +184,10 @@ def send_data_to_api(data, start, end):
 
         try:
             encoded = jwt.encode(payload, key_token, algorithm='HS256', headers=jwt_header)
-            write_log(f"📦 Payload JWT: \n{json.dumps(payload, default=str, indent=4)}")
-            write_log(f"🔐 Encoded JWT: {encoded}")
+            #write_log(f"Payload JWT: \n{json.dumps(payload, default=str, indent=4)}")
+            write_log(f"Encoded JWT: {encoded}")
         except AttributeError:
-            write_log("❌ Gagal encode JWT. Pastikan gunakan `PyJWT`, bukan `jwt` package lain.")
+            write_log("Gagal encode JWT. Pastikan gunakan `PyJWT`, bukan `jwt` package lain.")
             return
 
         headers = {'Authorization': f'Bearer {key_token}', 'Content-Type': 'application/json'}
@@ -202,16 +203,22 @@ def send_data_to_api(data, start, end):
                     cursor.execute("INSERT INTO `data` SELECT * FROM tmp WHERE `date` >=%s AND `date` <=%s", [start, end])
                     cursor.execute("DELETE FROM tmp WHERE `date` >=%s AND `date` <=%s", [start, end])
                     conn.commit()
-                    insert_data_klhk_success(now, encoded, response.text, f'{start} - {end}' , row_send=len(data), status=True)
-                    write_log("✅ Data berhasil dikirim & diproses.")
+                    insert_data_klhk_success(now, encoded, response.text, f'{start} - {end}' , row_send=len(data), status=True, category="send")
+                    write_log("Data berhasil dikirim & diproses.")
 
                 else:
-                    insert_data_klhk_success(now, encoded, response.text, f'{start} - {end}' , row_send=len(data), status=False)
+                    insert_data_klhk_success(now, encoded, response.text, f'{start} - {end}' , row_send=len(data), status=False, category="send")
                     desc = result.get("desc", "unknown error")
-                    write_log(f"⚠️ Gagal kirim: {desc}")
-                    
-                    cursor.execute("UPDATE tmp SET status='retry', keterangan=%s WHERE `date` >=%s AND `date` <=%s", [desc, start, end])
-                    conn.commit()
+                    write_log(f"Gagal kirim: {desc}")
+
+                    if "duplikasi" in desc.lower():
+                        cursor.execute("UPDATE tmp SET dateterkirim=%s, status='terkirim', keterangan='Terkirim duplikasi data, Check Manual' WHERE `date` >=%s AND `date` <=%s", [now,start, end])
+                        cursor.execute("INSERT INTO `data` SELECT * FROM tmp WHERE `date` >=%s AND `date` <=%s", [start, end])
+                        cursor.execute("DELETE FROM tmp WHERE `date` >=%s AND `date` <=%s", [start, end])
+                        conn.commit()
+                    else:
+                        cursor.execute("UPDATE tmp SET status='retry', keterangan=%s WHERE `date` >=%s AND `date` <=%s", [desc, start, end])
+                        conn.commit()
 
                     # Matikan Fungsi duplikasi sementara untuk menghindari loop tak berujung
                     # if "duplikasi" in desc.lower():
@@ -219,12 +226,12 @@ def send_data_to_api(data, start, end):
                     #     if duplicate_attempt >= MAX_DUP_RETRY:
                     #         cursor.execute("UPDATE tmp SET status='Duplikasi', keterangan='Manual check' WHERE `date` >=%s AND `date` <=%s", [start, end])
                     #         conn.commit()
-                    #         write_log("⚠️ Duplikasi berulang. Pengiriman dihentikan.")
+                    #         write_log("Duplikasi berulang. Pengiriman dihentikan.")
                     #         return
 
                     #     for ts in result.get("data", []):
                     #         cursor.execute("DELETE FROM tmp WHERE `date` = %s", [ts])
-                    #         write_log(f"🗑️ Hapus duplikat: {ts}")
+                    #         write_log(f"Hapus duplikat: {ts}")
                     #     conn.commit()
 
                     #     # Re-fetch & resend
@@ -234,17 +241,18 @@ def send_data_to_api(data, start, end):
                     #         data_cleaned = [dict(zip(FIELDS, row)) for row in rows]
                     #         send_data_to_api(data_cleaned, start, end)
                     #     else:
-                    #         write_log("ℹ️ Tidak ada data tersisa setelah hapus duplikat.")
+                    #         write_log("Tidak ada data tersisa setelah hapus duplikat.")
                     # else:
                     #     cursor.execute("UPDATE tmp SET status='retry', keterangan=%s WHERE `date` >=%s AND `date` <=%s", [desc, start, end])
                     #     conn.commit()
 
     except Exception as e:
-        write_log(f"❌ Error kirim data: {e}")
+        write_log(f"Error kirim data: {e}")
+        insert_data_klhk_success(now, None, str(e), f'{start} - {end}' , row_send=len(data), status=False, category="send")
 
 def scheduler():
     global STATUS, tz
-    write_log("⏱️ Service aktif. Menunggu eksekusi setiap jam pada menit ke-0")
+    write_log("Service aktif. Menunggu eksekusi setiap jam pada menit ke-0")
     last_run = None
     try:
         while True:
@@ -257,14 +265,14 @@ def scheduler():
                 if last_run != key_time:
                     update_config()
                     if STATUS.lower() != "active":
-                        write_log("ℹ️ Module KLHK Send tidak aktif. Melewati eksekusi.")
+                        write_log("Module KLHK Send tidak aktif. Melewati eksekusi.")
                     else:   
-                        write_log(f"⏳ Menjalankan scheduler pada {now}")
+                        write_log(f"Menjalankan scheduler pada {now}")
                         ambil_data()      
                     last_run = key_time
             time.sleep(1)
     except KeyboardInterrupt:
-        write_log("🛑 Service dihentikan manual.")
+        write_log("Service dihentikan manual.")
 
 if __name__ == "__main__":
     scheduler()

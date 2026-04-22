@@ -40,31 +40,62 @@ def normalize_header(text: str) -> str:
 # ==============================
 # kiri name concube : kanan real db column
 COLUMN_MAP = {
+
     "measurement interval": "Interval_Timestamp",
 
     "ph - measured": "ph",
     "orp - measured": "orp",
     "tds - measured": "tds",
+
     "conduct - measured": "conduct",
+    "conductivity - measured": "conduct",
+
+
     "do - measured": "do",
+    "dissolved oxygen - measured": "do",
+
     "salinity - measured": "salinity",
 
     "nh3n - measured": "nh3n",
+    "ammonium - measured": "nh3n",
+    "amonia - measured": "nh3n",
+
     "battery - measured": "battery",
+
     "depth - measured": "depth",
+    'kedalaman - measured': "depth",
+
     "debit - measured": "flow",
     "flow - measured": "flow",
     "total flow": "tflow",
+
     "turbidity - measured": "turb",
+    "turbidit - measured": "turb",
 
     "tss - measured": "tss",
+    "tsseq - measured": "tss",
+
 
     "cod - measured": "cod",
+    "codeq - measured": "cod",
 
     "bod - measured": "bod",
+    "bodeq - measured": "bod",
+
     "no3 - measured": "no3",
+    "no3eq - measured": "no3",
+    "nitrat - measured": "no3",
+
     "temperature - measured": "wtemp",
+    "temperat - measured": "wtemp",
+    "temperature": "wtemp",
+    "suhu - measured": "wtemp",
+
     "wpress - measured": "wpress",
+    
+
+     
+
 }
 
 # ==============================

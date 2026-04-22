@@ -92,7 +92,7 @@ def defaultConfig():
             "klhk_uid": "",
             "klhk_fields": "datetime,pH,cod,tss,nh3n,flow",
             "klhk_max_dup_retry": "3",
-            "klhk_target_minute": "10",
+            "klhk_target_minute": "5,10,15",
 
             # has api
             "has_status": "inactive",
@@ -280,7 +280,26 @@ def cekTable():
             )
         ''')
         conn.commit()
+
+
+
+        # Penambahan filed created_at untuk mencatat waktu pembuatan data, jika sudah ada tidak akan menambah kolom baru
+        # Check if column exists before adding it (compatible with MySQL < 8.0)
+        cursor.execute("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='data' AND COLUMN_NAME='created_at'")
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("ALTER TABLE data ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP")
         
+        cursor.execute("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='tmp' AND COLUMN_NAME='created_at'")
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("ALTER TABLE tmp ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP")
+        conn.commit()
+        
+        # Penambahan filed category untuk membedakan jenis pengiriman data ke KLHK, jika sudah ada tidak akan menambah kolom baru
+        cursor.execute("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='klhk_json_encode_success' AND COLUMN_NAME='category'")
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("ALTER TABLE klhk_json_encode_success ADD COLUMN category TEXT DEFAULT NULL")
+
+
     except Exception as e:
         print(f"[{datetime.now()}] Error pada koneksi database: {e}")
         return    
@@ -404,18 +423,18 @@ def ambilDataTerakhir(param_field):
     
     return row[0]
 
-def insert_data_klhk_success(timestamp, payload, response, date_send=None, row_send=0, status=False):
+def insert_data_klhk_success(timestamp, payload, response, date_send=None, row_send=0, status=False, category=None):
     try:
         MYSQL_CONFIG = mysqlConfig()
         conn = mysql.connector.connect(**MYSQL_CONFIG)
         cursor = conn.cursor()
 
         query = """
-        INSERT INTO klhk_json_encode_success (timestamp, payload, response, date_send, row_send, status)
-        VALUES (%s, %s, %s, %s, %s, %s);
+        INSERT INTO klhk_json_encode_success (timestamp, payload, response, date_send, row_send, status, category)
+        VALUES (%s, %s, %s, %s, %s, %s, %s);
         """
 
-        values = (timestamp, payload, response, date_send, row_send, status)
+        values = (timestamp, payload, response, date_send, row_send, status, category)
         cursor.execute(query, values)
         conn.commit()
 
