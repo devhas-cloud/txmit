@@ -188,7 +188,7 @@ async function loadKLHKSuccess() {
                     const response = row.response || '';
                     const payloadPreview = payload ? payload.substring(0, 100) + (payload.length > 100 ? '...' : '') : '-';
                     const responsePreview = response ? response.substring(0, 100) + (response.length > 100 ? '...' : '') : '-';
-                    const category = row.category.toUpperCase() || '-';
+                    const category = (row.category || '-').toUpperCase();
                     // Escape HTML in preview
                     const safePayloadPreview = payloadPreview.replace(/</g, '&lt;').replace(/>/g, '&gt;');
                     const safeResponsePreview = responsePreview.replace(/</g, '&lt;').replace(/>/g, '&gt;');
