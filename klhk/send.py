@@ -149,7 +149,7 @@ def ambil_data(date_from=None, date_to=None):
                     payload = []
                     for entry in data:
                         row_dict = dict(zip(["date"] + FIELDS, entry))
-                        item = {("debit" if field == "flow" else field): row_dict[field] for field in FIELDS}
+                        item = {("debit" if field == "flow" else field): (0 if row_dict[field] is None else row_dict[field]) for field in FIELDS}
                         payload.append(item)
 
                     write_log(f"Mengumpulkan data jam {start} - {end} dengan {len(payload)} entri")
