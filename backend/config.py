@@ -361,15 +361,15 @@ def insert_data(date, datetime, ph, orp, tds, conduct, do, salinity, nh3n, batte
     
     device = loadConfig()['device_id']
     cekTable()
-    
+    create_at = ambilDateAll()
     # Cek apakah data dengan device dan date yang sama sudah ada
     if check_duplicate_data(device, date):
         print(f"[SKIP] Data dengan device '{device}' dan date '{date}' sudah ada di database. Pembacaan dilewati.")
         return False
     
     query = """
-        INSERT INTO tmp (device, date, datetime, ph, orp, tds, conduct, do, salinity, nh3n, battery, depth, flow, tflow, turb, tss, cod, bod, no3, wtemp, wpress)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO tmp (device, date, datetime, ph, orp, tds, conduct, do, salinity, nh3n, battery, depth, flow, tflow, turb, tss, cod, bod, no3, wtemp, wpress,created_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
     try:
@@ -380,7 +380,7 @@ def insert_data(date, datetime, ph, orp, tds, conduct, do, salinity, nh3n, batte
         values = (
             device,
             date, datetime,
-            ph, orp, tds, conduct, do, salinity, nh3n, battery, depth, flow, tflow, turb, tss, cod, bod, no3, wtemp, wpress
+            ph, orp, tds, conduct, do, salinity, nh3n, battery, depth, flow, tflow, turb, tss, cod, bod, no3, wtemp, wpress,create_at
         )
         
         cursor.execute(query, values)
