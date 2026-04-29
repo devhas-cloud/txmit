@@ -57,6 +57,7 @@ COLUMN_MAP = {
     "salinity - measured": "salinity",
 
     "nh3n - measured": "nh3n",
+    "nh3-n - measured": "nh3n",
     "ammonium - measured": "nh3n",
     "amonia - measured": "nh3n",
 
