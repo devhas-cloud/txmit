@@ -60,8 +60,8 @@ def initConfig():
         return False
 
 # Initialize configuration at startup
-if not initConfig():
-    exit(1)
+# if not initConfig():
+#     exit(1)
 
 
 def refreshConfig():
@@ -83,7 +83,7 @@ def ambil_data(fields, date):
             with conn.cursor() as cursor:
                 # Gunakan parameterized query untuk mencegah SQL injection
                 field_str = ', '.join(fields)
-                query = f"SELECT {field_str} FROM data WHERE has = '0' AND DATE_FORMAT(FROM_UNIXTIME(datetime), '%Y-%m-%d %H:%i') <= %s"
+                query = f"SELECT {field_str} FROM data WHERE has = '0' AND `date`  <= %s"
                 cursor.execute(query, (date,))
                 rows = cursor.fetchall()
                 
@@ -108,7 +108,7 @@ def ambil_tmp(fields, date):
             with conn.cursor() as cursor:
                 # Gunakan parameterized query untuk mencegah SQL injection
                 field_str = ', '.join(fields)
-                query = f"SELECT {field_str} FROM tmp WHERE has = '0' AND DATE_FORMAT(FROM_UNIXTIME(datetime), '%Y-%m-%d %H:%i') <= %s"
+                query = f"SELECT {field_str} FROM tmp WHERE has = '0' AND `date`  <= %s"
                 cursor.execute(query, (date,))
                 rows = cursor.fetchall()
                 
@@ -147,10 +147,10 @@ def proses_data(rows):
         recorded_at = None
         timestamp = None
         
-        # First pass: extract datetime
+        # First pass: extract unix_time and convert to recorded_at
         for idx, field in enumerate(FIELDS):
             field = field.strip()
-            if field == 'datetime':
+            if field == 'unix_time':
                 timestamp = row[idx]
                 recorded_at = datetime.fromtimestamp(timestamp, tz).isoformat()
                 break
@@ -158,7 +158,7 @@ def proses_data(rows):
         # Second pass: create records for each parameter
         for idx, field in enumerate(FIELDS):
             field = field.strip()
-            if field != 'datetime':
+            if field != 'unix_time':
                 record = {
                     'recorded_at': recorded_at,
                     'timestamp': timestamp,
@@ -208,13 +208,13 @@ def send_data_to_api(date):
                     with conn.cursor() as cursor:
                         # Gunakan parameterized query
                         cursor.execute(
-                            "UPDATE data SET has = '1' WHERE DATE_FORMAT(FROM_UNIXTIME(datetime), '%Y-%m-%d %H:%i') <= %s",
+                            "UPDATE data SET has = '1' WHERE `date`  <= %s",
                             (date_str,)
                         )
                         data_updated = cursor.rowcount
                         
                         cursor.execute(
-                            "UPDATE tmp SET has = '1' WHERE DATE_FORMAT(FROM_UNIXTIME(datetime), '%Y-%m-%d %H:%i') <= %s",
+                            "UPDATE tmp SET has = '1' WHERE `date`  <= %s",
                             (date_str,)
                         )
                         tmp_updated = cursor.rowcount

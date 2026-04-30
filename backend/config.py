@@ -39,6 +39,7 @@ def defaultConfig():
             db_password TEXT,
 
             -- klhk api
+            klhk_timezone TEXT,
             klhk_status TEXT,
             klhk_api_url TEXT,
             klhk_token_url TEXT,
@@ -86,6 +87,7 @@ def defaultConfig():
             "db_password": "logix",
 
             # klhk api
+            "klhk_timezone": "Asia/Jakarta",
             "klhk_status": "inactive",
             "klhk_api_url": "https://sparing.kemenlh.go.id/api/send-hourly-vendor",
             "klhk_token_url": "https://sparing.kemenlh.go.id/api/secret-sensor",
@@ -98,7 +100,7 @@ def defaultConfig():
             "has_status": "inactive",
             "has_api_url": "https://api.hasportal.com/api/v1/data",
             "has_token_api": "",
-            "has_fields": "datetime,pH,cod,tss,nh3n,flow,wtemp,orp,turb,tds,conduct,do,depth,bod,wpress",
+            "has_fields": "unix_time,pH,cod,tss,nh3n,flow,wtemp,orp,turb,tds,conduct,do,depth,bod,wpress",
 
             # has logs
             "has_logs_api_url": "https://api.hasportal.com/api/v1/logs",
@@ -285,20 +287,48 @@ def cekTable():
 
         # Penambahan filed created_at untuk mencatat waktu pembuatan data, jika sudah ada tidak akan menambah kolom baru
         # Check if column exists before adding it (compatible with MySQL < 8.0)
-        cursor.execute("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='data' AND COLUMN_NAME='created_at'")
-        if cursor.fetchone()[0] == 0:
-            cursor.execute("ALTER TABLE data ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP")
-        
-        cursor.execute("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='tmp' AND COLUMN_NAME='created_at'")
-        if cursor.fetchone()[0] == 0:
-            cursor.execute("ALTER TABLE tmp ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP")
-        conn.commit()
-        
-        # Penambahan filed category untuk membedakan jenis pengiriman data ke KLHK, jika sudah ada tidak akan menambah kolom baru
-        cursor.execute("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='klhk_json_encode_success' AND COLUMN_NAME='category'")
-        if cursor.fetchone()[0] == 0:
-            cursor.execute("ALTER TABLE klhk_json_encode_success ADD COLUMN category TEXT DEFAULT NULL")
+        try:
+            cursor.execute("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='data' AND COLUMN_NAME='created_at' AND TABLE_SCHEMA=DATABASE()")
+            if cursor.fetchone()[0] == 0:
+                cursor.execute("ALTER TABLE data ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP")
+                conn.commit()
+        except Exception as e:
+            print(f"[ERROR] Failed to add 'created_at' column to 'data' table: {e}")
 
+        try:
+            cursor.execute("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='tmp' AND COLUMN_NAME='created_at' AND TABLE_SCHEMA=DATABASE()")
+            if cursor.fetchone()[0] == 0:
+                cursor.execute("ALTER TABLE tmp ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP")
+                conn.commit()
+        except Exception as e:
+            print(f"[ERROR] Failed to add 'created_at' column to 'tmp' table: {e}")
+
+        # Penambahan filed category untuk membedakan jenis pengiriman data ke KLHK, jika sudah ada tidak akan menambah kolom baru
+        try:
+            cursor.execute("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='klhk_json_encode_success' AND COLUMN_NAME='category' AND TABLE_SCHEMA=DATABASE()")
+            if cursor.fetchone()[0] == 0:
+                cursor.execute("ALTER TABLE klhk_json_encode_success ADD COLUMN category TEXT DEFAULT NULL")
+                conn.commit()
+                
+        except Exception as e:
+            print(f"[ERROR] Failed to add 'category' column to 'klhk_json_encode_success' table: {e}")
+    
+        # Menambahkan unix time global, karena datetime sudah ada untuk klhk tidak global.
+        try:
+            cursor.execute("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='data' AND COLUMN_NAME='unix_time' AND TABLE_SCHEMA=DATABASE()")
+            if cursor.fetchone()[0] == 0:
+                cursor.execute("ALTER TABLE data ADD COLUMN unix_time BIGINT DEFAULT 0")
+                conn.commit()
+        except Exception as e:
+            print(f"[ERROR] Failed to add 'unix_time' column to 'data' table: {e}")
+
+        try:
+            cursor.execute("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='tmp' AND COLUMN_NAME='unix_time' AND TABLE_SCHEMA=DATABASE()")
+            if cursor.fetchone()[0] == 0:
+                cursor.execute("ALTER TABLE tmp ADD COLUMN unix_time BIGINT DEFAULT 0")
+                conn.commit()
+        except Exception as e:
+            print(f"[ERROR] Failed to add 'unix_time' column to 'tmp' table: {e}")
 
     except Exception as e:
         print(f"[{datetime.now()}] Error pada koneksi database: {e}")
@@ -345,14 +375,15 @@ def check_duplicate_data(device, date, table='tmp'):
         return False
 
 
-def insert_data(date, datetime, ph, orp, tds, conduct, do, salinity, nh3n, battery, depth, flow, tflow, turb, tss, cod, bod, no3, wtemp, wpress):
+def insert_data(date, datetime, unix_time, ph, orp, tds, conduct, do, salinity, nh3n, battery, depth, flow, tflow, turb, tss, cod, bod, no3, wtemp, wpress):
     """
     Insert data ke database tmp table.
     Jika device dan date yang sama sudah ada, maka skip insertion.
     
     Args:
         date: Datetime object atau string
-        datetime: Unix timestamp
+        datetime: Unix timestamp klhk (sesuai timezone klhk)
+        unix_time: Unix timestamp UTC
         ph, orp, tds, ... : parameter sensor
         
     Returns:
@@ -368,8 +399,8 @@ def insert_data(date, datetime, ph, orp, tds, conduct, do, salinity, nh3n, batte
         return False
     
     query = """
-        INSERT INTO tmp (device, date, datetime, ph, orp, tds, conduct, do, salinity, nh3n, battery, depth, flow, tflow, turb, tss, cod, bod, no3, wtemp, wpress,created_at)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO tmp (device, date, datetime, unix_time, ph, orp, tds, conduct, do, salinity, nh3n, battery, depth, flow, tflow, turb, tss, cod, bod, no3, wtemp, wpress,created_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
     try:
@@ -379,7 +410,7 @@ def insert_data(date, datetime, ph, orp, tds, conduct, do, salinity, nh3n, batte
 
         values = (
             device,
-            date, datetime,
+            date, datetime, unix_time,
             ph, orp, tds, conduct, do, salinity, nh3n, battery, depth, flow, tflow, turb, tss, cod, bod, no3, wtemp, wpress,create_at
         )
         

@@ -49,6 +49,18 @@ def logout():
 def check_auth():
     return jsonify({'authenticated': 'user' in session}), 200
 
+# ==================== TIMEZONE ENDPOINT ====================
+
+@app.route('/api/timezone', methods=['GET'])
+def get_timezone():
+    """Mendapatkan timezone dari config database"""
+    try:
+        config = loadConfig()
+        timezone = config.get('timezone', 'Asia/Jakarta')
+        return jsonify({'timezone': timezone}), 200
+    except Exception as e:
+        return jsonify({'timezone': 'Asia/Jakarta', 'error': str(e)}), 200
+
 # ==================== CONFIG ENDPOINTS ====================
 
 @app.route('/api/config', methods=['GET'])
@@ -71,6 +83,7 @@ def get_config():
         'db_password': config.get('db_password', ''),
         
         # klhk api
+        'klhk_timezone': config.get('klhk_timezone', ''),
         'klhk_status': config.get('klhk_status', ''),
         'klhk_api_url': config.get('klhk_api_url', ''),
         'klhk_token_url': config.get('klhk_token_url', ''),
@@ -120,6 +133,7 @@ def update_config():
         valid_fields = {
             'port_number_app', 'port_number_log', 'timezone',
             'db_host', 'db_port', 'db_name', 'db_user', 'db_password',
+            'klhk_timezone',
             'klhk_status', 'klhk_api_url', 'klhk_token_url', 'klhk_uid', 
             'klhk_fields', 'klhk_max_dup_retry', 'klhk_target_minute',
             'has_status', 'has_api_url', 'has_token_api', 'has_fields',

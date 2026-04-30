@@ -14,8 +14,11 @@ ph, orp, tds, conduct, do, salinity, nh3n, battery, depth, flow, tflow, turb, ts
 # ==============================
 # TIMEZONE CONFIGURATION
 # ==============================
-TIMEZONE = loadConfig().get("timezone", "Asia/Jakarta")
+# Default timezone - akan di-reload setiap iterasi scheduler
+TIMEZONE = "Asia/Jakarta"
 tz = pytz.timezone(TIMEZONE)
+klhk_timezone = "Asia/Jakarta"
+
 
 # fungsi logs
 def write_log(message):
@@ -90,6 +93,7 @@ COLUMN_MAP = {
     "nitrat - measured": "no3",
 
     "temperature - measured": "wtemp",
+    "temperatur - measured": "wtemp",
     "temperat - measured": "wtemp",
     "temperature": "wtemp",
     "suhu - measured": "wtemp",
@@ -221,13 +225,38 @@ def prosesCsv():
                         ts_val = get_value("Interval_Timestamp")
 
                         if ts_val:
+                            
+                            # unix time untuk klhk (sesuai kebijakan klhk, harus sesuai timezone yang ditentukan di config)
                             try:
-                                Interval_Timestamp = datetime.strptime(
-                                    ts_val, "%Y-%m-%d %H:%M:%S"
-                                )
-                                unix_dt = int(time.mktime(Interval_Timestamp.timetuple()))
+                                klhk_tz = pytz.timezone(klhk_timezone)
+
+                                # parse string → naive datetime
+                                dt = datetime.strptime(ts_val, "%Y-%m-%d %H:%M:%S")
+
+                                # jadikan timezone-aware
+                                Interval_Timestamp = klhk_tz.localize(dt)
+
+                                # convert ke unix timestamp
+                                unix_dt = int(Interval_Timestamp.timestamp())
+
                             except Exception as e:
                                 write_log(f"Row {index}: gagal parse waktu → {e}")
+
+                            # unix time global UTC
+                            try:
+                                # parse string → naive datetime
+                                dt = datetime.strptime(ts_val, "%Y-%m-%d %H:%M:%S")
+
+                                # jadikan timezone-aware dengan timezone alat
+                                local_dt = tz.localize(dt)
+
+                                # convert ke UTC
+                                utc_dt = local_dt.astimezone(pytz.utc)
+
+                                # unix timestamp UTC
+                                unix_dt_utc = int(utc_dt.timestamp())
+                            except Exception as e:
+                                write_log(f"Row {index}: gagal parse waktu UTC → {e}")
 
                         # PARAMETER
                         ph = to_float(get_value("ph"))
@@ -255,7 +284,7 @@ def prosesCsv():
                         if Interval_Timestamp and Interval_Timestamp.minute % 2 == 0:
 
                             result = insert_data(
-                                Interval_Timestamp, unix_dt,
+                                Interval_Timestamp, unix_dt, unix_dt_utc,
                                 ph, orp, tds, conduct, do, salinity,
                                 nh3n, battery, depth, flow, tflow,
                                 turb, tss, cod, bod, no3, wtemp, wpress
@@ -293,10 +322,24 @@ def prosesCsv():
 #jalankan tiap 1 menit
 def scheduler():
     """Jalankan scheduler untuk pembacaan CSV setiap menit tepat di detik 0, efisien CPU"""
+    global TIMEZONE, tz, klhk_timezone
+    
     write_log("⏱️ Service CSV aktif. Menunggu jadwal pembacaan file CSV...")
 
     try:
         while True:
+            # =============================
+            # RELOAD CONFIG SETIAP ITERASI
+            # =============================
+            try:
+                config = loadConfig()
+                TIMEZONE = config.get("timezone", "Asia/Jakarta")
+                tz = pytz.timezone(TIMEZONE)
+                klhk_timezone = config.get("klhk_timezone", "Asia/Jakarta")
+            except Exception as e:
+                write_log(f"⚠️ Gagal reload config: {e}")
+                # Tetap gunakan config yang ada jika gagal reload
+            
             now = datetime.now(tz)
             
             # Hitung detik tersisa sampai detik 0 menit berikutnya

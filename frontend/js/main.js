@@ -23,33 +23,83 @@ function startEfficientScheduler(task, delaySeconds = 0) {
 }
 
 // ==========================================
-// REAL-TIME CLOCK
+// REAL-TIME CLOCK WITH TIMEZONE
 // ==========================================
+
+let appTimezone = 'Asia/Jakarta'; // Default timezone
+
+async function loadTimezoneFromConfig() {
+    try {
+        const response = await fetch('/api/timezone');
+        const data = await response.json();
+        if (data.timezone) {
+            appTimezone = data.timezone;
+        }
+    } catch (error) {
+        console.warn('Failed to load timezone from config, using default:', error);
+        appTimezone = 'Asia/Jakarta';
+    }
+}
+
+function formatTimeWithTimezone(date, timezone) {
+    try {
+        const formatter = new Intl.DateTimeFormat('id-ID', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+            timeZone: timezone
+        });
+        
+        const parts = formatter.formatToParts(date);
+        const values = {};
+        
+        parts.forEach(part => {
+            if (part.type !== 'literal') {
+                values[part.type] = part.value;
+            }
+        });
+        
+        return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}:${values.second}`;
+    } catch (error) {
+        // Fallback jika timezone tidak valid
+        console.warn('Invalid timezone:', timezone, error);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+}
 
 function updateRealTimeClock() {
     const clockElement = document.getElementById('current-time');
     if (clockElement) {
         const now = new Date();
-        
-        // Format: YYYY-MM-DD HH:MM:SS
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        const seconds = String(now.getSeconds()).padStart(2, '0');
-        
-        const timeString = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        const timeString = formatTimeWithTimezone(now, appTimezone);
         clockElement.textContent = timeString;
     }
 }
 
 function startRealTimeClock() {
-    // Update clock immediately
-    updateRealTimeClock();
-    
-    // Set interval to update every 1000ms (1 second)
-    setInterval(updateRealTimeClock, 1000);
+    // Load timezone from config first
+    loadTimezoneFromConfig().then(() => {
+        // Update clock immediately
+        updateRealTimeClock();
+        
+        // Set interval to update every 1000ms (1 second)
+        setInterval(updateRealTimeClock, 1000);
+    }).catch((error) => {
+        console.error('Error loading timezone config:', error);
+        // Still start clock with default timezone if config fails
+        updateRealTimeClock();
+        setInterval(updateRealTimeClock, 1000);
+    });
 }
 
 function refreshDashboardData() {
@@ -87,6 +137,7 @@ function refreshVisibleSectionData() {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
+    startRealTimeClock();
     refreshDashboardData();
 
     // Dashboard data at second 0 every minute

@@ -30,10 +30,10 @@ async function filterAllData() {
         
         if (data.success) {
             // Get fields from response or use defaults
-            const has_fields = (data.has_fields || 'datetime,pH,cod,tss,nh3n,flow')
+            const has_fields = (data.has_fields || 'unix_time,pH,cod,tss,nh3n,flow')
                 .split(',')
                 .map(f => f.trim())
-                .filter(f => f && f.toLowerCase() !== 'datetime');
+                .filter(f => f && f.toLowerCase() !== 'unix_time'); // Exclude unix_time from display
             
             // Render filtered data
             let html = '';
@@ -50,7 +50,7 @@ async function filterAllData() {
                 html = '<tr><td colspan="' + colSpan + '" class="text-center text-muted">Tidak ada data pada rentang tanggal ini</td></tr>';
             } else {
                 data.data.forEach((row, idx) => {
-                    const datetimeValue = getFieldValue(row, 'datetime') || getFieldValue(row, 'date');
+                    const datetimeValue = getFieldValue(row, 'date');
                     const tanggal = formatDateCustom(datetimeValue);
                     const createdAt = formatDateCustom(getFieldValue(row, 'created_at') || getFieldValue(row, 'createdat') || getFieldValue(row, 'created'));
                     

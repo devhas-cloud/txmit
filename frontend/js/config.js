@@ -33,6 +33,11 @@ async function loadConfiguration() {
         }
         
         // KLHK
+
+        if (document.getElementById('config-klhk-timezone')) {
+            document.getElementById('config-klhk-timezone').value = config.klhk_timezone || 'Asia/Jakarta';
+        }
+
         if (document.getElementById('config-klhk-status')) {
             document.getElementById('config-klhk-status').value = config.klhk_status || 'inactive';
         }
@@ -106,6 +111,7 @@ async function saveConfiguration() {
                 db_password: document.getElementById('config-db-password')?.value || '',
                 
                 // KLHK API
+                klhk_timezone: document.getElementById('config-klhk-timezone')?.value || 'Asia/Jakarta',
                 klhk_status: document.getElementById('config-klhk-status')?.value || 'inactive',
                 klhk_api_url: document.getElementById('config-klhk-api-url')?.value || '',
                 klhk_token_url: document.getElementById('config-klhk-token-url')?.value || '',

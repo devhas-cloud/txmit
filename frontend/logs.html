@@ -585,10 +585,60 @@
 
     <script>
         // ==========================================
-        // TIMESTAMP & SCHEDULER
+        // TIMEZONE & TIMESTAMP
         // ==========================================
+        let appTimezone = 'Asia/Jakarta'; // Default timezone
         let pageStartTime = new Date();
         let lastLogUpdate = new Date();
+
+        async function loadTimezoneFromConfig() {
+            try {
+                const response = await fetch('/api/timezone');
+                const data = await response.json();
+                if (data.timezone) {
+                    appTimezone = data.timezone;
+                }
+            } catch (error) {
+                console.warn('Failed to load timezone from config, using default:', error);
+                appTimezone = 'Asia/Jakarta';
+            }
+        }
+
+        function formatTimeWithTimezone(date, timezone) {
+            try {
+                const formatter = new Intl.DateTimeFormat('id-ID', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false,
+                    timeZone: timezone
+                });
+                
+                const parts = formatter.formatToParts(date);
+                const values = {};
+                
+                parts.forEach(part => {
+                    if (part.type !== 'literal') {
+                        values[part.type] = part.value;
+                    }
+                });
+                
+                return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}:${values.second}`;
+            } catch (error) {
+                // Fallback jika timezone tidak valid
+                console.warn('Invalid timezone:', timezone, error);
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                const seconds = String(date.getSeconds()).padStart(2, '0');
+                return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            }
+        }
 
         // Scheduler untuk logs - jalankan task di detik spesifik setiap menit
         function startLogScheduler(task, delaySeconds = 0) {
@@ -611,21 +661,10 @@
             scheduleNext();
         }
 
-        // Update "last updated" timestamp with running time
+        // Update "last updated" timestamp with running time using timezone
         function updateLogTimestamp() {
             const now = new Date();
-            const diffSeconds = Math.floor((now - lastLogUpdate) / 1000);
-            
-           
-            
-            // Format current running time (dd-mm-yyyy h:m:s) - REAL TIME
-            const day = now.getDate().toString().padStart(2, '0');
-            const month = (now.getMonth() + 1).toString().padStart(2, '0');
-            const year = now.getFullYear();
-            const hours = now.getHours().toString().padStart(2, '0');
-            const minutes = now.getMinutes().toString().padStart(2, '0');
-            const seconds = now.getSeconds().toString().padStart(2, '0');
-            const runningTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            const runningTime = formatTimeWithTimezone(now, appTimezone);
             
             const logSubtitle = document.getElementById('logSubtitle');
             if (logSubtitle) {
@@ -747,25 +786,46 @@
         // ==========================================
 
         function init() {
-            // Load initial logs from backend
-            loadLogsFromBackend();
+            // Load timezone from config first
+            loadTimezoneFromConfig().then(() => {
+                // Load initial logs from backend
+                loadLogsFromBackend();
 
-            // Set up auto-refresh for logs at second 05 every minute
-            startLogScheduler(() => {
-                if (!state.isPaused) {
-                    loadLogsFromBackend();
-                }
-            }, 5);
+                // Set up auto-refresh for logs at second 05 every minute
+                startLogScheduler(() => {
+                    if (!state.isPaused) {
+                        loadLogsFromBackend();
+                    }
+                }, 5);
 
-            // Update timestamp immediately on page load
-            updateLogTimestamp();
-
-            // Update timestamp every 1 second for real-time display
-            setInterval(() => {
+                // Update timestamp immediately on page load
                 updateLogTimestamp();
-            }, 1000);
 
-            updateLineCount();
+                // Update timestamp every 1 second for real-time display
+                setInterval(() => {
+                    updateLogTimestamp();
+                }, 1000);
+
+                updateLineCount();
+            }).catch((error) => {
+                console.error('Error loading timezone config:', error);
+                // Still start logs with default timezone if config fails
+                loadLogsFromBackend();
+
+                startLogScheduler(() => {
+                    if (!state.isPaused) {
+                        loadLogsFromBackend();
+                    }
+                }, 5);
+
+                updateLogTimestamp();
+
+                setInterval(() => {
+                    updateLogTimestamp();
+                }, 1000);
+
+                updateLineCount();
+            });
         }
 
         function addLogEntry(logData) {

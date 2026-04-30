@@ -84,6 +84,17 @@
                 <div class="config-form-grid">
 
                     <div class="config-form-group">
+                        <label class="form-label">Timezone</label>
+                        <select class="form-control" id="config-klhk-timezone">
+                            <option value="Asia/Jakarta">Asia/Jakarta (UTC+7)</option>
+                            <option value="Asia/Makassar">Asia/Makassar (UTC+8)</option>
+                            <option value="Asia/Jayapura">Asia/Jayapura (UTC+9)</option>
+                        </select>
+                        <small>Pilih zona waktu untuk data yang dikirim ke KLHK</small>
+                    </div>
+                        
+
+                    <div class="config-form-group">
                         <label class="form-label">Status</label>
                         <select class="form-control" id="config-klhk-status">
                             <option value="active">Active</option>
@@ -173,10 +184,10 @@
                     </div>
                     <div class="config-form-group">
                         <label class="form-label">Fields (comma-separated)</label>
-                        <input type="text" class="form-control" id="config-has-fields" placeholder="datetime,pH,cod,tss">
+                        <input type="text" class="form-control" id="config-has-fields" placeholder="unix_time,pH,cod,tss">
                         <small>Parameter yang dikirim ke HAS</small>
                         <small style="display: block; margin-top: 0.5rem; color: #6366f1; font-weight: 500;">
-                            <i class="bi bi-info-circle"></i> Fields tersedia: datetime, pH, orp, tds, conduct, do, salinity, nh3n, battery, depth, flow, tflow, turb, tss, cod, bod, no3, wtemp, wpress
+                            <i class="bi bi-info-circle"></i> Fields tersedia: unix_time, pH, orp, tds, conduct, do, salinity, nh3n, battery, depth, flow, tflow, turb, tss, cod, bod, no3, wtemp, wpress
                         </small>
                     </div>
                     
