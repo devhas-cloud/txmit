@@ -4,6 +4,9 @@ mkdir logs
 mkdir csv
 chmod 777 logs
 chmod 777 csv
+mkdir -p database/backup
+chmod -R 777 database
+
 docker-compose build --no-cache txmit
 
 # Start semua service di background
