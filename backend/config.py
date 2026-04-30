@@ -89,7 +89,7 @@ def defaultConfig():
             # klhk api
             "klhk_timezone": "Asia/Jakarta",
             "klhk_status": "inactive",
-            "klhk_api_url": "https://sparing.kemenlh.go.id/api/send-hourly-vendor",
+            "klhk_api_url": "https://sparing.kemenlh.go.id/api/send-hourly",
             "klhk_token_url": "https://sparing.kemenlh.go.id/api/secret-sensor",
             "klhk_uid": "",
             "klhk_fields": "datetime,pH,cod,tss,nh3n,flow",
