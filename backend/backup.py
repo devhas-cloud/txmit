@@ -99,6 +99,7 @@ def backup_database():
             "-h", MYSQL_CONFIG["host"],
             "-u", MYSQL_CONFIG["user"],
             f"-p{MYSQL_CONFIG['password']}",
+            "--skip-ssl",
             MYSQL_CONFIG["database"]
         ]
 
