@@ -28,6 +28,21 @@ function startEfficientScheduler(task, delaySeconds = 0) {
 
 let appTimezone = 'Asia/Jakarta'; // Default timezone
 
+async function loadTitleFromConfig() {
+    try {
+        const response = await fetch('/api/config');
+        const data = await response.json();
+        const deviceId = data.device_id || '';
+        document.title = (deviceId ? deviceId + ' - ' : '') + 'API Monitoring System';
+        const titleEl = document.getElementById('title');
+        if (titleEl) {
+            titleEl.textContent = document.title;
+        }
+    } catch (error) {
+        console.warn('Failed to load title from config:', error);
+    }
+}
+
 async function loadTimezoneFromConfig() {
     try {
         const response = await fetch('/api/timezone');
@@ -87,6 +102,9 @@ function updateRealTimeClock() {
 }
 
 function startRealTimeClock() {
+    // Load title from config
+    loadTitleFromConfig();
+
     // Load timezone from config first
     loadTimezoneFromConfig().then(() => {
         // Update clock immediately
