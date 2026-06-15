@@ -71,7 +71,6 @@ COLUMN_MAP = {
     'kedalaman - measured': "depth",
 
     "debit - measured": "flow",
-    "flow - measured": "flow",
     "flowrate - measured": "flow",
 
     "total flow": "tflow",
