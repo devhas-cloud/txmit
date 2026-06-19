@@ -196,7 +196,7 @@ def send_data_to_api(date):
         return False
 
     try:
-        response = requests.post(API_ENDPOINT, headers=headers, json=payload,timeout=(5, 30))
+        response = requests.post(API_ENDPOINT, headers=headers, json=payload,timeout=(29, 59))
         write_log(f"Payload:\n{json.dumps(payload, indent=4, sort_keys=False)}")
 
         if response.status_code in [200, 201]:  # 200 OK atau 201 Created
