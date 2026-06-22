@@ -118,12 +118,11 @@ def has_send_log(date_start, date_end):
         payload = []
         for row in rows:
             dt = row['date_klhk_sent']
-            date_iso = dt.strftime("%Y-%m-%dT%H:%M:%SZ") if dt else None
 
             payload.append({
                 "device_id": row['device_id'],
                 "unix_timestamp": row['unix_time'],
-                "date_klhk_sent": date_iso,
+                "date_klhk_sent": dt.strftime("%Y-%m-%d %H:%M:%S") if dt else None,
                 "is_sent": row['status'] == 'terkirim',
                 "response": row['keterangan']
             })
