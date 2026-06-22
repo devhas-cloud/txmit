@@ -83,7 +83,7 @@ def ambil_data(fields, date):
             with conn.cursor() as cursor:
                 # Gunakan parameterized query untuk mencegah SQL injection
                 field_str = ', '.join(fields)
-                query = f"SELECT {field_str} FROM data WHERE has = '0' AND `date`  <= %s ORDER BY `date` ASC LIMIT 100"
+                query = f"SELECT {field_str} FROM data WHERE has = '0' AND `date`  <= %s ORDER BY `date` ASC LIMIT 1000"
                 cursor.execute(query, (date,))
                 rows = cursor.fetchall()
                 
@@ -108,7 +108,7 @@ def ambil_tmp(fields, date):
             with conn.cursor() as cursor:
                 # Gunakan parameterized query untuk mencegah SQL injection
                 field_str = ', '.join(fields)
-                query = f"SELECT {field_str} FROM tmp WHERE has = '0' AND `date`  <= %s ORDER BY `date` ASC LIMIT 100"
+                query = f"SELECT {field_str} FROM tmp WHERE has = '0' AND `date`  <= %s ORDER BY `date` ASC LIMIT 1000"
                 cursor.execute(query, (date,))
                 rows = cursor.fetchall()
                 
@@ -232,7 +232,6 @@ def send_data_to_api(date):
     except requests.RequestException as e:
         write_log(f"❌ Error saat mengirim data ke HAS API: {e}")
         return False
-
 
 
 def scheduler():

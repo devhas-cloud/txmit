@@ -76,6 +76,9 @@ async function loadConfiguration() {
         if (document.getElementById('config-has-logs-api-url')) {
             document.getElementById('config-has-logs-api-url').value = config.has_logs_api_url || '';
         }
+        if (document.getElementById('config-has-klhk-log-api-url')) {
+            document.getElementById('config-has-klhk-log-api-url').value = config.has_klhk_log_api_url || '';
+        }
         
         showConfigAlert('✅ Konfigurasi berhasil dimuat', 'success');
     } catch (error) {
@@ -126,6 +129,7 @@ async function saveConfiguration() {
                 has_token_api: document.getElementById('config-has-token-api')?.value || '',
                 has_fields: document.getElementById('config-has-fields')?.value || '',
                 has_logs_api_url: document.getElementById('config-has-logs-api-url')?.value || '',
+                has_klhk_log_api_url: document.getElementById('config-has-klhk-log-api-url')?.value || '',
             };
             
             console.log('Sending config data:', configData);

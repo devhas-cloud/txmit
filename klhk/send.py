@@ -26,12 +26,14 @@ API_JWT = None
 UID = None
 MAX_DUP_RETRY = 3
 MYSQL_CONFIG = {}
+HAS_KLHK_LOG_API_URL = None
+HAS_TOKEN_API = None
 
 duplicate_attempt = 0
 
 def update_config():
     """Update all global configuration parameters from loadConfig()"""
-    global TIMEZONE, tz, HOST, USER, PASSWORD, DATABASE, PORT, FIELDS, STATUS, API_ENDPOINT, API_JWT, UID, MAX_DUP_RETRY, MYSQL_CONFIG
+    global TIMEZONE, tz, HOST, USER, PASSWORD, DATABASE, PORT, FIELDS, STATUS, API_ENDPOINT, API_JWT, UID, MAX_DUP_RETRY, MYSQL_CONFIG, HAS_KLHK_LOG_API_URL, HAS_TOKEN_API
     
     try:
         config = loadConfig()
@@ -53,6 +55,8 @@ def update_config():
         API_JWT = config.get('klhk_token_url')
         UID = config.get('klhk_uid')
         MAX_DUP_RETRY = int(config.get('klhk_max_dup_retry', 3))
+        HAS_KLHK_LOG_API_URL = config.get('has_klhk_log_api_url')
+        HAS_TOKEN_API = config.get('has_token_api')
         
         MYSQL_CONFIG = {
             'host': HOST,
@@ -73,6 +77,61 @@ def write_log(message):
     except:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}] {message}")
+
+def has_send_log(date_start, date_end):
+    global HAS_KLHK_LOG_API_URL, HAS_TOKEN_API, MYSQL_CONFIG, tz
+
+    if not HAS_KLHK_LOG_API_URL or not HAS_TOKEN_API:
+        return
+
+    try:
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+
+        query = """
+            SELECT device AS device_id, unix_time, `date` AS date_klhk_sent, status, keterangan
+            FROM tmp
+            WHERE `date` >= %s AND `date` <= %s
+            UNION ALL
+            SELECT device AS device_id, unix_time, `date` AS date_klhk_sent, status, keterangan
+            FROM data
+            WHERE `date` >= %s AND `date` <= %s
+            ORDER BY date_klhk_sent ASC
+        """
+        cursor.execute(query, (date_start, date_end, date_start, date_end))
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        if not rows:
+            return
+
+        payload = []
+        for row in rows:
+            dt = row['date_klhk_sent']
+            date_iso = dt.strftime("%Y-%m-%dT%H:%M:%SZ") if dt else None
+
+            payload.append({
+                "device_id": row['device_id'],
+                "unix_timestamp": row['unix_time'],
+                "date_klhk_sent": date_iso,
+                "is_sent": row['status'] == 'terkirim',
+                "response": row['keterangan']
+            })
+
+        headers = {
+            "X-API-Key": HAS_TOKEN_API,
+            "Content-Type": "application/json"
+        }
+        resp = requests.post(HAS_KLHK_LOG_API_URL, headers=headers, json=payload, timeout=(29, 59))
+
+        if resp.status_code in [200, 201]:
+            write_log(f"HAS KLHK Log terkirim: {len(payload)} records ({date_start} s/d {date_end})")
+        else:
+            write_log(f"HAS KLHK Log gagal: {resp.status_code} - {resp.text}")
+
+    except Exception as e:
+        write_log(f"Error has_send_log: {e}")
 
 def get_jwt_token():
     global API_JWT
@@ -177,6 +236,7 @@ def send_data_to_api(data, start, end):
                     conn.commit()
             write_log("Gagal dapat token JWT.")
             insert_data_klhk_success(now, None, "Gagal dapat token JWT", f'{start} - {end}' , row_send=len(data), status=False, category="send")
+            has_send_log(start, end)
             return
 
         payload = {"uid": UID, "data": data}
@@ -220,35 +280,12 @@ def send_data_to_api(data, start, end):
                         cursor.execute("UPDATE tmp SET status='retry', keterangan=%s WHERE `date` >=%s AND `date` <=%s", [desc, start, end])
                         conn.commit()
 
-                    # Matikan Fungsi duplikasi sementara untuk menghindari loop tak berujung
-                    # if "duplikasi" in desc.lower():
-                    #     duplicate_attempt += 1
-                    #     if duplicate_attempt >= MAX_DUP_RETRY:
-                    #         cursor.execute("UPDATE tmp SET status='Duplikasi', keterangan='Manual check' WHERE `date` >=%s AND `date` <=%s", [start, end])
-                    #         conn.commit()
-                    #         write_log("Duplikasi berulang. Pengiriman dihentikan.")
-                    #         return
-
-                    #     for ts in result.get("data", []):
-                    #         cursor.execute("DELETE FROM tmp WHERE `date` = %s", [ts])
-                    #         write_log(f"Hapus duplikat: {ts}")
-                    #     conn.commit()
-
-                    #     # Re-fetch & resend
-                    #     cursor.execute(f"SELECT {', '.join(FIELDS)} FROM tmp WHERE `date` >=%s AND `date` <=%s", [start, end])
-                    #     rows = cursor.fetchall()
-                    #     if rows:
-                    #         data_cleaned = [dict(zip(FIELDS, row)) for row in rows]
-                    #         send_data_to_api(data_cleaned, start, end)
-                    #     else:
-                    #         write_log("Tidak ada data tersisa setelah hapus duplikat.")
-                    # else:
-                    #     cursor.execute("UPDATE tmp SET status='retry', keterangan=%s WHERE `date` >=%s AND `date` <=%s", [desc, start, end])
-                    #     conn.commit()
+        has_send_log(start, end)
 
     except Exception as e:
         write_log(f"Error kirim data: {e}")
         insert_data_klhk_success(now, None, str(e), f'{start} - {end}' , row_send=len(data), status=False, category="send")
+        has_send_log(start, end)
 
 def scheduler():
     global STATUS, tz

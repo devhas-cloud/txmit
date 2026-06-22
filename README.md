@@ -428,7 +428,7 @@ config (
   klhk_fields, klhk_max_dup_retry, klhk_target_minute,
   -- has api
   has_status, has_api_url, has_token_api, has_fields,
-  has_logs_api_url, has_logs_token_api,
+  has_logs_api_url, has_klhk_log_api_url,
   -- dashboard
   parameters, gap_web, web_title, web_name,
   -- device

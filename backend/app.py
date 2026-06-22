@@ -100,7 +100,7 @@ def get_config():
         
         # has logs
         'has_logs_api_url': config.get('has_logs_api_url', ''),
-        'has_logs_token_api': config.get('has_logs_token_api', ''),
+        'has_klhk_log_api_url': config.get('has_klhk_log_api_url', ''),
         
         # dashboard/web
         'parameters': config.get('parameters', '').split(',') if config.get('parameters') else [],
@@ -137,7 +137,7 @@ def update_config():
             'klhk_status', 'klhk_api_url', 'klhk_token_url', 'klhk_uid', 
             'klhk_fields', 'klhk_max_dup_retry', 'klhk_target_minute',
             'has_status', 'has_api_url', 'has_token_api', 'has_fields',
-            'has_logs_api_url', 'has_logs_token_api',
+            'has_logs_api_url', 'has_klhk_log_api_url',
             'parameters', 'gap_web', 'web_title', 'web_name',
             'device_id', 'location_name', 'software_version', 'geo_latitude', 'geo_longitude'
         }

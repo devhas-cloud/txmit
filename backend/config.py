@@ -56,7 +56,7 @@ def defaultConfig():
 
             -- has logs
             has_logs_api_url TEXT,
-            has_logs_token_api TEXT,
+            has_klhk_log_api_url TEXT,
 
             -- dashboard/web
             parameters TEXT,
@@ -104,7 +104,7 @@ def defaultConfig():
 
             # has logs
             "has_logs_api_url": "https://api.hasportal.com/api/v1/logs",
-            "has_logs_token_api": "",
+            "has_klhk_log_api_url": "https://api.hasportal.com/api/v1/klhk-log",
 
             # dashboard/web
             "parameters": "pH,cod,tss,nh3n,flow,wtemp,orp,turb,tds,conduct,do,depth,bod,wpress",
@@ -135,6 +135,15 @@ def defaultConfig():
             VALUES (1, {placeholders})
             """, values)
 
+        conn.commit()
+
+        # Migration: tambah kolom baru yang belum ada di tabel config existing
+        cursor.execute("PRAGMA table_info(config)")
+        existing_cols = {col[1] for col in cursor.fetchall()}
+        for col_name, default_value in configurations.items():
+            if col_name not in existing_cols:
+                cursor.execute(f'ALTER TABLE config ADD COLUMN "{col_name}" TEXT')
+                cursor.execute(f'UPDATE config SET "{col_name}" = ? WHERE id=1', (default_value,))
         conn.commit()
 
     except Exception as e:
