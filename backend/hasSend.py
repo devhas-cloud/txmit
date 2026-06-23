@@ -195,6 +195,8 @@ def send_data_to_api(date):
         write_log(f"ℹ️ Tidak ada data baru untuk dikirim ke HAS API pada tanggal {date_str}.")
         return False
 
+    max_timestamp = max(r['timestamp'] for r in payload['data'])
+
     try:
         response = requests.post(API_ENDPOINT, headers=headers, json=payload,timeout=(29, 59))
         write_log(f"Payload:\n{json.dumps(payload, indent=4, sort_keys=False)}")
@@ -208,19 +210,19 @@ def send_data_to_api(date):
                     with conn.cursor() as cursor:
                         # Gunakan parameterized query
                         cursor.execute(
-                            "UPDATE data SET has = '1' WHERE `date`  <= %s",
-                            (date_str,)
+                            "UPDATE data SET has = '1' WHERE has = '0' AND unix_time <= %s",
+                            (max_timestamp,)
                         )
                         data_updated = cursor.rowcount
                         
                         cursor.execute(
-                            "UPDATE tmp SET has = '1' WHERE `date`  <= %s",
-                            (date_str,)
+                            "UPDATE tmp SET has = '1' WHERE has = '0' AND unix_time <= %s",
+                            (max_timestamp,)
                         )
                         tmp_updated = cursor.rowcount
                         
                         conn.commit()
-                        write_log(f"✅ Status 'has' diperbarui: {data_updated} rows di 'data', {tmp_updated} rows di 'tmp' untuk tanggal {date_str}")
+                        write_log(f"✅ Status 'has' diperbarui: {data_updated} rows di 'data', {tmp_updated} rows di 'tmp' (max unix_time: {max_timestamp})")
             except mysql.connector.Error as e:
                 write_log(f"❌ DB Error saat memperbarui status 'has': {e}")
             except Exception as e:
