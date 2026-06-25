@@ -173,48 +173,75 @@ def update_config():
 @app.route('/api/data/pending', methods=['GET'])
 @login_required
 def get_pending_data():
-    """Mendapatkan data yang siap dikirim (belum dikirim ke API)"""
+    """Mendapatkan data yang siap dikirim (belum dikirim ke API) dengan pagination"""
     try:
         mysql_config = mysqlConfig()
         conn = mysql.connector.connect(**mysql_config)
         cursor = conn.cursor(dictionary=True)
         
-        # Get data yang belum dikirim (status != 'sent' atau dateterkirim NULL)
-        query = """
-        SELECT * FROM tmp 
-        WHERE status IS NULL OR status = ''
-        ORDER BY `date` DESC 
-        LIMIT 1000
-        """
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 15, type=int)
+        date_from = request.args.get('date_from')
+        date_to = request.args.get('date_to')
         
-        cursor.execute(query)
+        if page < 1:
+            page = 1
+        if limit < 1:
+            limit = 15
+        offset = (page - 1) * limit
+        
+        params = []
+        where_clause = "WHERE (status IS NULL OR status = '')"
+        
+        if date_from:
+            where_clause += " AND `date` >= %s"
+            params.append(date_from)
+        if date_to:
+            where_clause += " AND `date` <= %s"
+            params.append(date_to)
+        
+        count_query = f"SELECT COUNT(*) as total FROM tmp {where_clause}"
+        cursor.execute(count_query, params)
+        total = cursor.fetchone()['total']
+        
+        data_query = f"""
+        SELECT * FROM tmp
+        {where_clause}
+        ORDER BY `date` DESC
+        LIMIT %s OFFSET %s
+        """
+        data_params = params + [limit, offset]
+        
+        cursor.execute(data_query, data_params)
         rows = cursor.fetchall()
         
         cursor.close()
         conn.close()
         
-        # Convert datetime objects to strings and handle None values
         for row in rows:
             if isinstance(row.get('date'), datetime):
                 row['date'] = row['date'].isoformat()
             if isinstance(row.get('dateterkirim'), datetime):
                 row['dateterkirim'] = row['dateterkirim'].isoformat()
             
-            # Ensure numeric fields are properly formatted
             for key in ['pH', 'orp', 'tds', 'do', 'conduct', 'flow', 'cod', 'tss', 'bod']:
                 if row.get(key) is not None:
                     if isinstance(row[key], (int, float)):
                         row[key] = float(row[key])
         
-        # Load config to get klhk_fields
         from config import loadConfig
         config = loadConfig()
         klhk_fields = config.get('klhk_fields', 'datetime,pH,cod,tss,nh3n,flow')
         
+        total_pages = max(1, (total + limit - 1) // limit)
+        
         return jsonify({
             'success': True,
-            'count': len(rows),
             'data': rows,
+            'total': total,
+            'page': page,
+            'limit': limit,
+            'total_pages': total_pages,
             'klhk_fields': klhk_fields
         }), 200
     
@@ -358,48 +385,75 @@ def manual_retry():
 @app.route('/api/data/retry', methods=['GET'])
 @login_required
 def get_retry_data():
-    """Mendapatkan data yang statusnya retry (gagal kirim sebelumnya)"""
+    """Mendapatkan data yang statusnya retry (gagal kirim sebelumnya) dengan pagination"""
     try:
         mysql_config = mysqlConfig()
         conn = mysql.connector.connect(**mysql_config)
         cursor = conn.cursor(dictionary=True)
         
-        # Get data dengan status 'retry'
-        query = """
-        SELECT * FROM tmp 
-        WHERE status = 'retry'
-        ORDER BY `date` DESC 
-        LIMIT 1000
-        """
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 15, type=int)
+        date_from = request.args.get('date_from')
+        date_to = request.args.get('date_to')
         
-        cursor.execute(query)
+        if page < 1:
+            page = 1
+        if limit < 1:
+            limit = 15
+        offset = (page - 1) * limit
+        
+        params = []
+        where_clause = "WHERE status = 'retry'"
+        
+        if date_from:
+            where_clause += " AND `date` >= %s"
+            params.append(date_from)
+        if date_to:
+            where_clause += " AND `date` <= %s"
+            params.append(date_to)
+        
+        count_query = f"SELECT COUNT(*) as total FROM tmp {where_clause}"
+        cursor.execute(count_query, params)
+        total = cursor.fetchone()['total']
+        
+        data_query = f"""
+        SELECT * FROM tmp
+        {where_clause}
+        ORDER BY `date` DESC
+        LIMIT %s OFFSET %s
+        """
+        data_params = params + [limit, offset]
+        
+        cursor.execute(data_query, data_params)
         rows = cursor.fetchall()
         
         cursor.close()
         conn.close()
         
-        # Convert datetime objects to strings and handle None values
         for row in rows:
             if isinstance(row.get('date'), datetime):
                 row['date'] = row['date'].isoformat()
             if isinstance(row.get('dateterkirim'), datetime):
                 row['dateterkirim'] = row['dateterkirim'].isoformat()
             
-            # Ensure numeric fields are properly formatted
             for key in ['pH', 'orp', 'tds', 'do', 'conduct', 'flow', 'cod', 'tss', 'bod']:
                 if row.get(key) is not None:
                     if isinstance(row[key], (int, float)):
                         row[key] = float(row[key])
         
-        # Load config to get klhk_fields
         from config import loadConfig
         config = loadConfig()
         klhk_fields = config.get('klhk_fields', 'datetime,pH,cod,tss,nh3n,flow')
         
+        total_pages = max(1, (total + limit - 1) // limit)
+        
         return jsonify({
             'success': True,
-            'count': len(rows),
             'data': rows,
+            'total': total,
+            'page': page,
+            'limit': limit,
+            'total_pages': total_pages,
             'klhk_fields': klhk_fields
         }), 200
     
@@ -446,34 +500,64 @@ def get_klhk_success():
 @app.route('/api/data/klhk-logs', methods=['GET'])
 @login_required
 def get_klhk_logs():
-    """Mendapatkan data pengiriman KLHK yang berhasil"""
+    """Mendapatkan data pengiriman KLHK yang berhasil dengan pagination dan filter"""
     try:
         mysql_config = mysqlConfig()
         conn = mysql.connector.connect(**mysql_config)
         cursor = conn.cursor(dictionary=True)
         
-        # Get data dari tabel klhk_json_encode_success
-        query = """
-        SELECT * FROM klhk_json_encode_success
-        ORDER BY timestamp DESC 
-        LIMIT 1000
-        """
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 15, type=int)
+        date_from = request.args.get('date_from')
+        date_to = request.args.get('date_to')
         
-        cursor.execute(query)
+        if page < 1:
+            page = 1
+        if limit < 1:
+            limit = 15
+        offset = (page - 1) * limit
+        
+        params = []
+        where_clause = "WHERE 1=1"
+        
+        if date_from:
+            where_clause += " AND timestamp >= %s"
+            params.append(date_from)
+        if date_to:
+            where_clause += " AND timestamp <= %s"
+            params.append(date_to)
+        
+        count_query = f"SELECT COUNT(*) as total FROM klhk_json_encode_success {where_clause}"
+        cursor.execute(count_query, params)
+        total = cursor.fetchone()['total']
+        
+        data_query = f"""
+        SELECT * FROM klhk_json_encode_success
+        {where_clause}
+        ORDER BY timestamp DESC
+        LIMIT %s OFFSET %s
+        """
+        data_params = params + [limit, offset]
+        
+        cursor.execute(data_query, data_params)
         rows = cursor.fetchall()
         
         cursor.close()
         conn.close()
         
-        # Convert datetime objects to strings
         for row in rows:
             if isinstance(row.get('timestamp'), datetime):
                 row['timestamp'] = row['timestamp'].isoformat()
         
+        total_pages = max(1, (total + limit - 1) // limit)
+        
         return jsonify({
             'success': True,
-            'count': len(rows),
-            'data': rows
+            'data': rows,
+            'total': total,
+            'page': page,
+            'limit': limit,
+            'total_pages': total_pages
         }), 200
     
     except Exception as e:
@@ -837,71 +921,79 @@ def filter_retry_data():
 @app.route('/api/data/all', methods=['POST'])
 @login_required
 def get_all_data():
-    """Mendapatkan semua data (union dari tabel data dan tmp)"""
+    """Mendapatkan semua data (union dari tabel data dan tmp) dengan pagination"""
     try:
         data = request.get_json()
         mysql_config = mysqlConfig()
         conn = mysql.connector.connect(**mysql_config)
         cursor = conn.cursor(dictionary=True)
         
+        page = data.get('page', 1)
+        limit = data.get('limit', 15)
         date_from = data.get('date_from')
         date_to = data.get('date_to')
         
-        params = []
+        if page < 1:
+            page = 1
+        if limit < 1:
+            limit = 15
+        offset = (page - 1) * limit
+        
+        params_count = []
+        params_data = []
         date_col = '`date`'
         
-        # Build UNION query to get data from both data and tmp tables
-        query = f"""
-        SELECT * FROM (
-            SELECT * FROM data WHERE 1=1
-        """
-        
+        where_data = "1=1"
         if date_from:
-            query += f" AND {date_col} >= %s"
-            params.append(date_from)
+            where_data += f" AND {date_col} >= %s"
+            params_count.append(date_from)
+            params_data.append(date_from)
         if date_to:
-            query += f" AND {date_col} <= %s"
-            params.append(date_to)
+            where_data += f" AND {date_col} <= %s"
+            params_count.append(date_to)
+            params_data.append(date_to)
         
-        query += f"""
+        union_where = f"""
+            SELECT * FROM data WHERE {where_data}
             UNION ALL
-            SELECT * FROM tmp WHERE 1=1
+            SELECT * FROM tmp WHERE {where_data}
         """
         
-        if date_from:
-            query += f" AND {date_col} >= %s"
-            params.append(date_from)
-        if date_to:
-            query += f" AND {date_col} <= %s"
-            params.append(date_to)
+        count_query = f"SELECT COUNT(*) as total FROM ({union_where}) AS combined_data"
+        cursor.execute(count_query, params_count)
+        total = cursor.fetchone()['total']
         
-        query += f"""
-        ) AS combined_data
+        data_query = f"""
+        SELECT * FROM ({union_where}) AS combined_data
         ORDER BY {date_col} DESC
-        LIMIT 1000
+        LIMIT %s OFFSET %s
         """
+        data_params = params_data + [limit, offset]
         
-        cursor.execute(query, params)
+        cursor.execute(data_query, data_params)
         rows = cursor.fetchall()
         
-        # Convert datetime
         for row in rows:
             for key, value in row.items():
                 if isinstance(value, datetime):
                     row[key] = value.isoformat()
         
-        # Get has_fields from config
         from config import loadConfig
         config = loadConfig()
         has_fields = config.get('has_fields', 'datetime,pH,cod,tss,nh3n,flow')
+        
+        total_pages = max(1, (total + limit - 1) // limit)
         
         cursor.close()
         conn.close()
         
         return jsonify({
             'success': True,
-            'count': len(rows),
             'data': rows,
+            'total': total,
+            'page': page,
+            'limit': limit,
+            'total_pages': total_pages,
             'has_fields': has_fields
         }), 200
     

@@ -2,17 +2,19 @@
 // KLHK-SUCCESS.JS - KLHK Success Functions
 // ==========================================
 
-// Store KLHK data rows untuk copy function
 let klhkDataRows = [];
+let klhkCurrentPage = 1;
+let klhkPageSize = 15;
+let klhkTotalPages = 1;
+let klhkTotalRows = 0;
+let klhkFilterFrom = '';
+let klhkFilterTo = '';
 
-// Fallback copy function untuk browsers tanpa Clipboard API
 function copyToClipboard(text) {
-    // Try modern Clipboard API first
     if (navigator.clipboard && window.isSecureContext) {
         return navigator.clipboard.writeText(text);
     }
     
-    // Fallback untuk non-HTTPS atau older browsers
     return new Promise((resolve, reject) => {
         try {
             const textarea = document.createElement('textarea');
@@ -39,33 +41,26 @@ function copyToClipboard(text) {
     });
 }
 
-// Decode JWT payload from Base64
 function decodeJWT(token) {
     try {
         if (!token) return null;
         
-        // Remove spaces and newlines
         token = token.replace(/\s+/g, '');
         
-        // JWT format: header.payload.signature
         const parts = token.split('.');
         if (parts.length !== 3) {
             return null;
         }
         
-        // Decode payload (second part)
         let payload = parts[1];
         
-        // Add padding if needed
         const padding = 4 - (payload.length % 4);
         if (padding !== 4) {
             payload += '='.repeat(padding);
         }
         
-        // Decode base64
         const decoded = atob(payload);
         
-        // Parse JSON
         return JSON.parse(decoded);
     } catch (error) {
         console.error('Error decoding JWT:', error);
@@ -73,7 +68,6 @@ function decodeJWT(token) {
     }
 }
 
-// Show view payload modal
 function showPayloadModal(payload) {
     const displayPayload = payload || 'No payload';
     
@@ -114,7 +108,6 @@ function showPayloadModal(payload) {
     });
 }
 
-// Show decoded JWT info modal
 function showJWTInfoModal(payload) {
     const decoded = decodeJWT(payload);
     
@@ -164,72 +157,156 @@ function showJWTInfoModal(payload) {
     });
 }
 
-// Load KLHK success full
-async function loadKLHKSuccess() {
+function renderKLHKTable(data) {
+    if (!data || data.length === 0) {
+        return '<tr><td colspan="8" class="text-center text-muted">Tidak ada data KLHK success</td></tr>';
+    }
+    
+    let html = '';
+    const startNum = (klhkCurrentPage - 1) * klhkPageSize + 1;
+    
+    data.forEach((row, idx) => {
+        const date = formatDateCustom(row.timestamp || '');
+        const payload = row.payload || '';
+        const response = row.response || '';
+        const payloadPreview = payload ? payload.substring(0, 100) + (payload.length > 100 ? '...' : '') : '-';
+        const responsePreview = response ? response.substring(0, 100) + (response.length > 100 ? '...' : '') : '-';
+        const category = (row.category || '-').toUpperCase();
+        const safePayloadPreview = payloadPreview.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const safeResponsePreview = responsePreview.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        
+        html += `<tr>
+            <td>${startNum + idx}</td>
+            <td>${category}</td>
+            <td>${date}</td>
+            <td>${row.date_send || ''}</td>
+            <td>${row.row_send || ''}</td>
+            <td title="${payload.substring(0, 50)}"><code style="font-size: 0.85rem; word-break: break-word;">${safePayloadPreview}</code></td>
+            <td title="${response.substring(0, 50)}"><code style="font-size: 0.85rem; word-break: break-word;">${safeResponsePreview}</code></td>
+            <td>
+                <button class="btn btn-sm btn-primary view-btn" data-index="${idx}" type="button" title="View Payload">
+                    <i class="bi bi-eye"></i>
+                </button> 
+                <button class="btn btn-sm btn-info info-btn" data-index="${idx}" type="button" title="View Decoded JWT">
+                    <i class="bi bi-info-circle"></i>
+                </button>
+            </td>
+        </tr>`;
+    });
+    
+    return html;
+}
+
+function renderKLHKPagination() {
+    const container = document.getElementById('klhk-pagination');
+    if (!container) return;
+    
+    if (klhkTotalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    let html = '<div class="pagination-info">';
+    html += `Menampilkan ${(klhkCurrentPage - 1) * klhkPageSize + 1} - ${Math.min(klhkCurrentPage * klhkPageSize, klhkTotalRows)} dari ${klhkTotalRows} data`;
+    html += '</div>';
+    
+    html += '<div class="pagination-controls">';
+    
+    const prevDisabled = klhkCurrentPage <= 1 ? 'disabled' : '';
+    html += `<button class="pagination-btn ${prevDisabled}" onclick="klhkGoToPage(${klhkCurrentPage - 1})" ${prevDisabled}><i class="bi bi-chevron-left"></i></button>`;
+    
+    const maxButtons = 5;
+    let startPage = Math.max(1, klhkCurrentPage - Math.floor(maxButtons / 2));
+    let endPage = Math.min(klhkTotalPages, startPage + maxButtons - 1);
+    
+    if (endPage - startPage < maxButtons - 1) {
+        startPage = Math.max(1, endPage - maxButtons + 1);
+    }
+    
+    if (startPage > 1) {
+        html += `<button class="pagination-btn" onclick="klhkGoToPage(1)">1</button>`;
+        if (startPage > 2) {
+            html += '<span class="pagination-ellipsis">...</span>';
+        }
+    }
+    
+    for (let p = startPage; p <= endPage; p++) {
+        const activeClass = p === klhkCurrentPage ? 'active' : '';
+        html += `<button class="pagination-btn ${activeClass}" onclick="klhkGoToPage(${p})">${p}</button>`;
+    }
+    
+    if (endPage < klhkTotalPages) {
+        if (endPage < klhkTotalPages - 1) {
+            html += '<span class="pagination-ellipsis">...</span>';
+        }
+        html += `<button class="pagination-btn" onclick="klhkGoToPage(${klhkTotalPages})">${klhkTotalPages}</button>`;
+    }
+    
+    const nextDisabled = klhkCurrentPage >= klhkTotalPages ? 'disabled' : '';
+    html += `<button class="pagination-btn ${nextDisabled}" onclick="klhkGoToPage(${klhkCurrentPage + 1})" ${nextDisabled}><i class="bi bi-chevron-right"></i></button>`;
+    
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+function klhkGoToPage(page) {
+    if (page < 1 || page > klhkTotalPages || page === klhkCurrentPage) return;
+    klhkCurrentPage = page;
+    fetchKLHKData();
+}
+
+async function fetchKLHKData(silent) {
+    const tableBody = document.getElementById('klhk-success-body');
+    if (tableBody) {
+        tableBody.innerHTML = '<tr><td colspan="8" class="text-center text-muted"><div class="loading"><div class="loading-spinner"></div><p>Memuat data KLHK...</p></div></td></tr>';
+    }
+    
     try {
-        const response = await fetch('/api/data/klhk-logs');
+        let url = `/api/data/klhk-logs?page=${klhkCurrentPage}&limit=${klhkPageSize}`;
+        
+        if (klhkFilterFrom) {
+            url += `&date_from=${encodeURIComponent(klhkFilterFrom)}`;
+        }
+        if (klhkFilterTo) {
+            url += `&date_to=${encodeURIComponent(klhkFilterTo)}`;
+        }
+        
+        const response = await fetch(url);
         const data = await response.json();
         
-        console.log('KLHK Success Data:', data);
-        
-        if (data.success && data.data) {
-            // Store raw data for copy functions
+        if (data.success) {
             klhkDataRows = Array.isArray(data.data) ? data.data : [];
-            console.log('Stored klhkDataRows:', klhkDataRows);
-            
-            let html = '';
-            
-            if (klhkDataRows.length === 0) {
-                html = '<tr><td colspan="7" class="text-center text-muted">Tidak ada data KLHK success</td></tr>';
-            } else {
-                klhkDataRows.forEach((row, idx) => {
-                    const date = formatDateCustom(row.timestamp || '');
-                    const payload = row.payload || '';
-                    const response = row.response || '';
-                    const payloadPreview = payload ? payload.substring(0, 100) + (payload.length > 100 ? '...' : '') : '-';
-                    const responsePreview = response ? response.substring(0, 100) + (response.length > 100 ? '...' : '') : '-';
-                    const category = (row.category || '-').toUpperCase();
-                    // Escape HTML in preview
-                    const safePayloadPreview = payloadPreview.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                    const safeResponsePreview = responsePreview.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                    
-                    html += `<tr>
-                        <td>${idx + 1}</td>
-                        <td>${category}</td>
-                        <td>${date}</td>
-                        <td>${row.date_send || ''}</td>
-                        <td>${row.row_send || ''}</td>
-                        <td title="${payload.substring(0, 50)}"><code style="font-size: 0.85rem; word-break: break-word;">${safePayloadPreview}</code></td>
-                        <td title="${response.substring(0, 50)}"><code style="font-size: 0.85rem; word-break: break-word;">${safeResponsePreview}</code></td>
-                        <td>
-                            <button class="btn btn-sm btn-primary view-btn" data-index="${idx}" type="button" title="View Payload">
-                                <i class="bi bi-eye"></i>
-                            </button> 
-                            <button class="btn btn-sm btn-info info-btn" data-index="${idx}" type="button" title="View Decoded JWT">
-                                <i class="bi bi-info-circle"></i>
-                            </button>
-                        </td>
-                    </tr>`;
-                });
-            }
+            klhkTotalRows = data.total || 0;
+            klhkTotalPages = data.total_pages || 1;
             
             const tableBody = document.getElementById('klhk-success-body');
             if (tableBody) {
-                tableBody.innerHTML = html;
+                tableBody.innerHTML = renderKLHKTable(klhkDataRows);
                 attachButtonListeners();
             }
+            
+            renderKLHKPagination();
         } else {
-            console.error('API response error:', data);
-            document.getElementById('klhk-success-body').innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error: Tidak ada data atau response error</td></tr>';
+            if (!silent) {
+                document.getElementById('klhk-success-body').innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error: ' + (data.error || 'Tidak ada data atau response error') + '</td></tr>';
+                document.getElementById('klhk-pagination').innerHTML = '';
+            }
         }
     } catch (error) {
         console.error('Error loading KLHK success:', error);
-        document.getElementById('klhk-success-body').innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error loading data: ' + error.message + '</td></tr>';
+        if (!silent) {
+            document.getElementById('klhk-success-body').innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error loading data: ' + error.message + '</td></tr>';
+            document.getElementById('klhk-pagination').innerHTML = '';
+        }
     }
 }
 
+async function loadKLHKSuccess() {
+    klhkCurrentPage = 1;
+    await fetchKLHKData();
+}
 
-// Filter KLHK data
 async function filterKLHKData() {
     const dateFrom = document.getElementById('filter-klhk-from').value;
     const dateTo = document.getElementById('filter-klhk-to').value;
@@ -244,82 +321,24 @@ async function filterKLHKData() {
         return;
     }
     
-    try {
-        const response = await fetch('/api/data/filter', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                date_from: dateFrom + ' 00:00:00',
-                date_to: dateTo + ' 23:59:59'
-            })
+    if (dateFrom > dateTo) {
+        Swal.fire({
+            title: 'Filter Tanggal',
+            text: 'Tanggal mulai tidak boleh lebih besar dari tanggal akhir',
+            icon: 'warning',
+            confirmButtonColor: '#4f46e5'
         });
-        const data = await response.json();
-        
-        console.log('Filter result:', data);
-        
-        if (data.success && data.data) {
-            // Store raw data for copy functions
-            klhkDataRows = Array.isArray(data.data) ? data.data : [];
-            console.log('Filtered klhkDataRows:', klhkDataRows);
-            
-            let html = '';
-            if (klhkDataRows.length === 0) {
-                html = '<tr><td colspan="5" class="text-center text-muted">Tidak ada data pada rentang tanggal ini</td></tr>';
-            } else {
-                klhkDataRows.forEach((row, idx) => {
-                    const date = formatDateCustom(row.timestamp || '');
-                    const payload = row.payload || '';
-                    const response = row.response || '';
-                    const payloadPreview = payload ? payload.substring(0, 100) + (payload.length > 100 ? '...' : '') : '-';
-                    const responsePreview = response ? response.substring(0, 100) + (response.length > 100 ? '...' : '') : '-';
-                    
-                    // Escape HTML in preview
-                    const safePayloadPreview = payloadPreview.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                    const safeResponsePreview = responsePreview.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                    
-                    html += `<tr>
-                        <td>${idx + 1}</td>
-                        <td>${date}</td>
-                        <td title="${payload.substring(0, 50)}"><code style="font-size: 0.85rem; word-break: break-word;">${safePayloadPreview}</code></td>
-                        <td title="${response.substring(0, 50)}"><code style="font-size: 0.85rem; word-break: break-word;">${safeResponsePreview}</code></td>
-                        <td>
-                            <button class="btn btn-sm btn-primary view-btn" data-index="${idx}" type="button" title="View Payload">
-                                <i class="fas fa-eye"></i>
-                            </button> 
-                            <button class="btn btn-sm btn-info info-btn" data-index="${idx}" type="button" title="View Decoded JWT">
-                                <i class="fas fa-info-circle"></i>
-                            </button>
-                        </td>
-                    </tr>`;
-                });
-            }
-            
-            const tableBody = document.getElementById('klhk-success-body');
-            if (tableBody) {
-                tableBody.innerHTML = html;
-                attachButtonListeners();
-            }
-            
-            Swal.fire({
-                title: 'Berhasil',
-                text: 'Data berhasil difilter (' + klhkDataRows.length + ' baris)',
-                icon: 'success',
-                timer: 2000
-            });
-        } else {
-            Swal.fire('Error', data.error || 'Gagal memfilter data', 'error');
-        }
-    } catch (error) {
-        console.error('Filter error:', error);
-        Swal.fire('Error', 'Gagal memfilter data: ' + error.message, 'error');
+        return;
     }
+    
+    klhkFilterFrom = dateFrom + ' 00:00:00';
+    klhkFilterTo = dateTo + ' 23:59:59';
+    klhkCurrentPage = 1;
+    
+    await fetchKLHKData();
 }
 
-// Attach event listeners to buttons
 function attachButtonListeners() {
-    console.log('Attaching button listeners. Total data rows:', klhkDataRows.length);
-    
-    // Remove old listeners first to prevent duplicates
     document.querySelectorAll('.view-btn').forEach(btn => {
         const newBtn = btn.cloneNode(true);
         btn.parentNode.replaceChild(newBtn, btn);
@@ -330,41 +349,31 @@ function attachButtonListeners() {
         btn.parentNode.replaceChild(newBtn, btn);
     });
     
-    // ViewPayLoad Button
     document.querySelectorAll('.view-btn').forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             const index = parseInt(this.getAttribute('data-index'));
-            console.log('View button clicked, index:', index);
             
             if (index >= 0 && index < klhkDataRows.length) {
                 const payload = klhkDataRows[index]?.payload || '';
-                console.log('Payload to show:', payload.substring(0, 50));
                 showPayloadModal(payload);
             } else {
-                console.error('Invalid index:', index);
                 Swal.fire('Error', 'Data tidak ditemukan', 'error');
             }
         });
     });
     
-    // Info Button
     document.querySelectorAll('.info-btn').forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             const index = parseInt(this.getAttribute('data-index'));
-            console.log('Info button clicked, index:', index);
             
             if (index >= 0 && index < klhkDataRows.length) {
                 const payload = klhkDataRows[index]?.payload || '';
-                console.log('Payload to decode:', payload.substring(0, 50));
                 showJWTInfoModal(payload);
             } else {
-                console.error('Invalid index:', index);
                 Swal.fire('Error', 'Data tidak ditemukan', 'error');
             }
         });
     });
-    
-    console.log('Button listeners attached successfully');
 }

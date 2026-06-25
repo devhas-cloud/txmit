@@ -2,84 +2,167 @@
 // RETRY-DATA.JS - Retry Data Functions
 // ==========================================
 
-// Load retry data full
-async function loadRetryData(options = {}) {
-    const { notify = false } = options;
+let retryCurrentPage = 1;
+let retryPageSize = 15;
+let retryTotalPages = 1;
+let retryTotalRows = 0;
+let retryFilterFrom = '';
+let retryFilterTo = '';
+
+function renderRetryTable(data, fields) {
+    if (!data || data.length === 0) {
+        const colSpan = fields.length + 4;
+        return `<tr><td colspan="${colSpan}" class="text-center text-muted">Tidak ada data retry</td></tr>`;
+    }
+    
+    let html = '';
+    const startNum = (retryCurrentPage - 1) * retryPageSize + 1;
+    
+    data.forEach((row, idx) => {
+        const datetimeValue = getFieldValue(row, 'datetime') || getFieldValue(row, 'date');
+        const tanggal = formatDateCustom(datetimeValue);
+        const statusKeterangan = row.keterangan || '';
+        
+        html += `<tr>
+            <td>${startNum + idx}</td>
+            <td>${tanggal}</td>`;
+        
+        fields.forEach(field => {
+            const value = getFieldValue(row, field);
+            const formatted = formatFieldValue(value, field);
+            html += `<td>${formatted}</td>`;
+        });
+        
+        html += `<td><span class="badge badge-pending"><i class="bi bi-arrow-repeat"></i> Retry</span></td>
+        <td>${statusKeterangan}</td></tr>`;
+    });
+    
+    return html;
+}
+
+function renderRetryPagination() {
+    const container = document.getElementById('retry-pagination');
+    if (!container) return;
+    
+    if (retryTotalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    let html = '<div class="pagination-info">';
+    html += `Menampilkan ${(retryCurrentPage - 1) * retryPageSize + 1} - ${Math.min(retryCurrentPage * retryPageSize, retryTotalRows)} dari ${retryTotalRows} data`;
+    html += '</div>';
+    
+    html += '<div class="pagination-controls">';
+    
+    const prevDisabled = retryCurrentPage <= 1 ? 'disabled' : '';
+    html += `<button class="pagination-btn ${prevDisabled}" onclick="retryGoToPage(${retryCurrentPage - 1})" ${prevDisabled}><i class="bi bi-chevron-left"></i></button>`;
+    
+    const maxButtons = 5;
+    let startPage = Math.max(1, retryCurrentPage - Math.floor(maxButtons / 2));
+    let endPage = Math.min(retryTotalPages, startPage + maxButtons - 1);
+    
+    if (endPage - startPage < maxButtons - 1) {
+        startPage = Math.max(1, endPage - maxButtons + 1);
+    }
+    
+    if (startPage > 1) {
+        html += `<button class="pagination-btn" onclick="retryGoToPage(1)">1</button>`;
+        if (startPage > 2) {
+            html += '<span class="pagination-ellipsis">...</span>';
+        }
+    }
+    
+    for (let p = startPage; p <= endPage; p++) {
+        const activeClass = p === retryCurrentPage ? 'active' : '';
+        html += `<button class="pagination-btn ${activeClass}" onclick="retryGoToPage(${p})">${p}</button>`;
+    }
+    
+    if (endPage < retryTotalPages) {
+        if (endPage < retryTotalPages - 1) {
+            html += '<span class="pagination-ellipsis">...</span>';
+        }
+        html += `<button class="pagination-btn" onclick="retryGoToPage(${retryTotalPages})">${retryTotalPages}</button>`;
+    }
+    
+    const nextDisabled = retryCurrentPage >= retryTotalPages ? 'disabled' : '';
+    html += `<button class="pagination-btn ${nextDisabled}" onclick="retryGoToPage(${retryCurrentPage + 1})" ${nextDisabled}><i class="bi bi-chevron-right"></i></button>`;
+    
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+function retryGoToPage(page) {
+    if (page < 1 || page > retryTotalPages || page === retryCurrentPage) return;
+    retryCurrentPage = page;
+    fetchRetryData();
+}
+
+async function fetchRetryData(silent) {
+    const tableBody = document.getElementById('retry-data-body');
+    if (tableBody) {
+        tableBody.innerHTML = '<tr><td colspan="8" class="text-center text-muted"><div class="loading"><div class="loading-spinner"></div><p>Memuat data pengiriman ulang...</p></div></td></tr>';
+    }
+    
     try {
-        const response = await fetch('/api/data/retry');
+        let url = `/api/data/retry?page=${retryCurrentPage}&limit=${retryPageSize}`;
+        
+        if (retryFilterFrom) {
+            url += `&date_from=${encodeURIComponent(retryFilterFrom)}`;
+        }
+        if (retryFilterTo) {
+            url += `&date_to=${encodeURIComponent(retryFilterTo)}`;
+        }
+        
+        const response = await fetch(url);
         const data = await response.json();
         
         if (data.success) {
+            retryTotalRows = data.total || 0;
+            retryTotalPages = data.total_pages || 1;
+            
             const fields = (data.klhk_fields || 'datetime,pH,cod,tss,nh3n,flow')
                 .split(',')
                 .map(f => f.trim())
                 .filter(f => f && f.toLowerCase() !== 'datetime');
             
-            let html = '';
-            let headerHtml = '<th>No</th><th>Tanggal</th>';
+            const headerHtml = '<th>No</th><th>Tanggal</th>'
+                + fields.map(f => `<th>${getFieldDisplayName(f)}</th>`).join('')
+                + '<th>Status</th><th>Keterangan</th>';
             
-            // Build dynamic headers (exclude datetime since we have Tanggal column)
-            fields.forEach(field => {
-                headerHtml += `<th>${getFieldDisplayName(field)}</th>`;
-            });
-            headerHtml += '<th>Status</th>';
-            headerHtml += '<th>Keterangan</th>';
-            
-            if (data.data.length === 0) {
-                const colSpan = fields.length + 4;
-                html = `<tr><td colspan="${colSpan}" class="text-center text-muted">Tidak ada data retry</td></tr>`;
-            } else {
-                data.data.forEach((row, idx) => {
-                    const datetimeValue = getFieldValue(row, 'datetime') || getFieldValue(row, 'date');
-                    const tanggal = formatDateCustom(datetimeValue);
-                    const statusKeterangan = row.keterangan || '';
-                    
-                    html += `<tr>
-                        <td>${idx + 1}</td>
-                        <td>${tanggal}</td>`;
-                    
-                    fields.forEach(field => {
-                        const value = getFieldValue(row, field);
-                        const formatted = formatFieldValue(value, field);
-                        html += `<td>${formatted}</td>`;
-                        
-                    });
-                    
-                    html += `<td><span class="badge badge-pending"><i class="bi bi-arrow-repeat"></i> Retry </span></td>
-                    <td>${statusKeterangan}</td></tr>`;
-                });
+            const table = document.getElementById('retry-data-table');
+            if (table) {
+                table.innerHTML = `<thead><tr>${headerHtml}</tr></thead><tbody id="retry-data-body">${renderRetryTable(data.data, fields)}</tbody>`;
             }
             
-            // Update the table header and body
-            const table = document.getElementById('retry-data-table');
-            table.innerHTML = `
-                <thead>
-                    <tr>${headerHtml}</tr>
-                </thead>
-                <tbody>${html}</tbody>
-            `;
-            if (notify) {
+            renderRetryPagination();
+            
+            if (!silent) {
                 Swal.fire({
                     title: 'Berhasil',
-                    text: 'Data pengiriman ulang berhasil dimuat',
+                    text: 'Data pengiriman ulang berhasil dimuat' + (retryFilterFrom ? '' : ''),
                     icon: 'success',
                     showConfirmButton: false,
                     timer: 1500,
                     timerProgressBar: true
                 });
             }
-        } else if (notify) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Gagal',
-                text: data.error || 'Gagal memuat data pengiriman ulang'
-            });
+        } else {
+            if (!silent) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: data.error || 'Gagal memuat data pengiriman ulang'
+                });
+            }
+            document.getElementById('retry-pagination').innerHTML = '';
         }
     } catch (error) {
         console.error('Error loading retry data:', error);
-        const colSpan = 8;
-        document.getElementById('retry-data-body').innerHTML = `<tr><td colspan="${colSpan}" class="text-center text-danger">Error loading data</td></tr>`;
-        if (notify) {
+        document.getElementById('retry-data-body').innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error loading data</td></tr>';
+        document.getElementById('retry-pagination').innerHTML = '';
+        if (!silent) {
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
@@ -89,7 +172,14 @@ async function loadRetryData(options = {}) {
     }
 }
 
-// Helper function to convert DD-MM-YYYY HH:MM to YYYY-MM-DD HH:MM:SS
+async function loadRetryData(options = {}) {
+    const { notify = false } = options;
+    retryCurrentPage = 1;
+    retryFilterFrom = '';
+    retryFilterTo = '';
+    await fetchRetryData(notify);
+}
+
 function convertDateTimeFormatRetry(datetimeStr) {
     if (!datetimeStr) return null;
     const parts = datetimeStr.split(' ');
@@ -105,7 +195,6 @@ function convertDateTimeFormatRetry(datetimeStr) {
     return `${year}-${month}-${day} ${hours}:${minutes}:00`;
 }
 
-// Filter retry data
 async function filterRetryData() {
     const dateFromInput = document.getElementById('filter-retry-from').value;
     const dateToInput = document.getElementById('filter-retry-to').value;
@@ -123,94 +212,23 @@ async function filterRetryData() {
     const dateFrom = convertDateTimeFormatRetry(dateFromInput);
     const dateTo = convertDateTimeFormatRetry(dateToInput);
     
-    try {
-        const response = await fetch('/api/retry/filter', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                date_from: dateFrom,
-                date_to: dateTo
-            })
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            // Get fields from response or use defaults
-            const fields = (data.klhk_fields || 'datetime,pH,cod,tss,nh3n,flow')
-                .split(',')
-                .map(f => f.trim())
-                .filter(f => f && f.toLowerCase() !== 'datetime');
-            
-            // Render filtered data
-            let html = '';
-            let headerHtml = '<th>No</th><th>Tanggal</th>';
-            
-            // Build dynamic headers
-            fields.forEach(field => {
-                headerHtml += `<th>${getFieldDisplayName(field)}</th>`;
-            });
-            headerHtml += '<th>Status</th>';
-            headerHtml += '<th>Keterangan</th>';
-            
-            if (data.data.length === 0) {
-                const colSpan = fields.length + 4;
-                html = '<tr><td colspan="' + colSpan + '" class="text-center text-muted">Tidak ada data pada rentang tanggal ini</td></tr>';
-            } else {
-                data.data.forEach((row, idx) => {
-                    const datetimeValue = getFieldValue(row, 'datetime') || getFieldValue(row, 'date');
-                    const tanggal = formatDateCustom(datetimeValue);
-                    const statusKeterangan = row.keterangan || '';
-                    
-                    html += `<tr>
-                        <td>${idx + 1}</td>
-                        <td>${tanggal}</td>`;
-                    
-                    fields.forEach(field => {
-                        const value = getFieldValue(row, field);
-                        const formatted = formatFieldValue(value, field);
-                        html += `<td>${formatted}</td>`;
-                    });
-                    
-                    html += `<td><span class="badge badge-pending"><i class="bi bi-arrow-repeat"></i> Retry</span></td>
-                    <td>${statusKeterangan}</td></tr>`;
-                });
-            }
-            
-            // Update table headers and body
-            const table = document.getElementById('retry-data-table');
-            table.innerHTML = `
-                <thead>
-                    <tr>${headerHtml}</tr>
-                </thead>
-                <tbody id="retry-data-body">${html}</tbody>
-            `;
-            
-            Swal.fire({
-                title: 'Berhasil',
-                text: 'Data pengiriman ulang berhasil difilter',
-                icon: 'success',
-                timer: 2000
-            });
-        } else {
-            Swal.fire('Error', data.error || 'Gagal memfilter data pengiriman ulang', 'error');
-        }
-    } catch (error) {
-        console.error('Filter error:', error);
-        
+    if (!dateFrom || !dateTo) {
         Swal.fire({
-            title: 'Error Filter',
-            html: `
-                <p>Terjadi kesalahan saat memfilter data:</p>
-                <p style="color: red; font-size: 12px;">${error.message}</p>
-                <p style="font-size: 12px;">Silakan periksa browser console (F12) untuk detail error.</p>
-            `,
-            icon: 'error',
+            title: 'Filter Tanggal',
+            text: 'Format tanggal tidak valid',
+            icon: 'warning',
             confirmButtonColor: '#4f46e5'
         });
+        return;
     }
+    
+    retryCurrentPage = 1;
+    retryFilterFrom = dateFrom;
+    retryFilterTo = dateTo;
+    
+    await fetchRetryData();
 }
 
-// Load retry status
 async function loadRetryStatus() {
     try {
         const response = await fetch('/api/retry/status');
@@ -242,13 +260,11 @@ async function loadRetryStatus() {
     }
 }
 
-// Reload retry data
 async function reloadRetryData() {
     await loadRetryData({ notify: true });
     await loadRetryStatus();
 }
 
-// Manual retry data
 async function manualRetryData() {
     const dateFromInput = document.getElementById('filter-retry-from').value;
     const dateToInput = document.getElementById('filter-retry-to').value;
@@ -311,9 +327,7 @@ async function manualRetryData() {
         })
     };
     
-    console.log('Manual retry payload:', payload);
     const bodyString = JSON.stringify(payload);
-    console.log('Manual retry body string:', bodyString);
     
     try {
         const response = await fetch('/api/retry/manual', {
@@ -344,12 +358,10 @@ async function manualRetryData() {
                 confirmButtonColor: '#4f46e5'
             });
             
-            // Reload data after dialog closes
             await new Promise(resolve => setTimeout(resolve, 1000));
             loadRetryData();
             loadRetryStatus();
         } else {
-            // Error response
             let errorMsg = data.error || 'Gagal memicu pengiriman ulang manual';
             let errorDetail = '';
             
@@ -381,18 +393,13 @@ async function manualRetryData() {
     }
 }
 
-// Initialize datetime picker for retry filter
 function initRetryDatetimePicker() {
-    // Wait for jQuery and jQuery DateTime Picker to be available
     if (typeof $ === 'undefined' || typeof $.datetimepicker === 'undefined') {
         console.warn('[Retry] jQuery DateTime Picker not loaded, retrying in 200ms...');
         setTimeout(initRetryDatetimePicker, 200);
         return;
     }
     
-    console.log('[Retry] Starting datepicker initialization...');
-    
-    // Find retry filter elements
     const filterRetryFrom = document.getElementById('filter-retry-from');
     const filterRetryTo = document.getElementById('filter-retry-to');
     
@@ -402,18 +409,12 @@ function initRetryDatetimePicker() {
         return;
     }
     
-    console.log('[Retry] Found filter elements, initializing datetimepicker...');
-    
     try {
-        // Ensure locale is set
         $.datetimepicker.setLocale('id');
         
-        // Destroy existing instances first to ensure clean state
         $('#filter-retry-from').datetimepicker('destroy');
         $('#filter-retry-to').datetimepicker('destroy');
-        console.log('[Retry] Destroyed existing instances');
         
-        // Now initialize fresh
         $('#filter-retry-from, #filter-retry-to').datetimepicker({
             format: 'd-m-Y H:i',
             formatTime: 'H:i',
@@ -438,27 +439,21 @@ function initRetryDatetimePicker() {
                             const timeParts = parts[1].split(':');
                             const hours = String(timeParts[0] || '0').padStart(2, '0');
                             const minutes = String(timeParts[1] || '0').padStart(2, '0');
-                            const formatted = `${day}-${month}-${year} ${hours}:${minutes}`;
-                            $input.val(formatted);
+                            $input.val(`${day}-${month}-${year} ${hours}:${minutes}`);
                         }
                     }
                 }
             }
         });
-        
-        console.log('[Retry] Datepicker initialized successfully');
     } catch (error) {
         console.error('[Retry] Error initializing datepicker:', error);
     }
 }
 
-// Initialize when section loads
 if (typeof window.initRetryDataSection === 'undefined') {
     window.initRetryDataSection = function() {
         initRetryDatetimePicker();
         loadRetryData();
         loadRetryStatus();
-        // Auto refresh status every 30 seconds
-        //setInterval(loadRetryStatus, 30000);
     };
 }

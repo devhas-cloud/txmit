@@ -2,84 +2,156 @@
 // PENDING-DATA.JS - Pending Data Functions
 // ==========================================
 
-// Load pending data full
-async function loadPendingData(options = {}) {
-    const { notify = false } = options;
+let pendingCurrentPage = 1;
+let pendingPageSize = 15;
+let pendingTotalPages = 1;
+let pendingTotalRows = 0;
+let pendingFilterFrom = '';
+let pendingFilterTo = '';
+
+function renderPendingTable(data, fields) {
+    if (!data || data.length === 0) {
+        const colSpan = fields.length + 4;
+        return `<tr><td colspan="${colSpan}" class="text-center text-muted">Tidak ada data pending</td></tr>`;
+    }
+    
+    let html = '';
+    const startNum = (pendingCurrentPage - 1) * pendingPageSize + 1;
+    
+    data.forEach((row, idx) => {
+        const datetimeValue = getFieldValue(row, 'datetime') || getFieldValue(row, 'date');
+        const tanggal = formatDateCustom(datetimeValue);
+        const statusKeterangan = row.keterangan || '';
+        
+        html += `<tr>
+            <td>${startNum + idx}</td>
+            <td>${tanggal}</td>`;
+        
+        fields.forEach(field => {
+            const value = getFieldValue(row, field);
+            const formatted = formatFieldValue(value, field);
+            html += `<td>${formatted}</td>`;
+        });
+        
+        html += `<td><span class="badge badge-pending"><i class="bi bi-hourglass-split"></i> Pending</span></td>
+        <td>${statusKeterangan}</td></tr>`;
+    });
+    
+    return html;
+}
+
+function renderPendingPagination() {
+    const container = document.getElementById('pending-pagination');
+    if (!container) return;
+    
+    if (pendingTotalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    let html = '<div class="pagination-info">';
+    html += `Menampilkan ${(pendingCurrentPage - 1) * pendingPageSize + 1} - ${Math.min(pendingCurrentPage * pendingPageSize, pendingTotalRows)} dari ${pendingTotalRows} data`;
+    html += '</div>';
+    
+    html += '<div class="pagination-controls">';
+    
+    const prevDisabled = pendingCurrentPage <= 1 ? 'disabled' : '';
+    html += `<button class="pagination-btn ${prevDisabled}" onclick="pendingGoToPage(${pendingCurrentPage - 1})" ${prevDisabled}><i class="bi bi-chevron-left"></i></button>`;
+    
+    const maxButtons = 5;
+    let startPage = Math.max(1, pendingCurrentPage - Math.floor(maxButtons / 2));
+    let endPage = Math.min(pendingTotalPages, startPage + maxButtons - 1);
+    
+    if (endPage - startPage < maxButtons - 1) {
+        startPage = Math.max(1, endPage - maxButtons + 1);
+    }
+    
+    if (startPage > 1) {
+        html += `<button class="pagination-btn" onclick="pendingGoToPage(1)">1</button>`;
+        if (startPage > 2) {
+            html += '<span class="pagination-ellipsis">...</span>';
+        }
+    }
+    
+    for (let p = startPage; p <= endPage; p++) {
+        const activeClass = p === pendingCurrentPage ? 'active' : '';
+        html += `<button class="pagination-btn ${activeClass}" onclick="pendingGoToPage(${p})">${p}</button>`;
+    }
+    
+    if (endPage < pendingTotalPages) {
+        if (endPage < pendingTotalPages - 1) {
+            html += '<span class="pagination-ellipsis">...</span>';
+        }
+        html += `<button class="pagination-btn" onclick="pendingGoToPage(${pendingTotalPages})">${pendingTotalPages}</button>`;
+    }
+    
+    const nextDisabled = pendingCurrentPage >= pendingTotalPages ? 'disabled' : '';
+    html += `<button class="pagination-btn ${nextDisabled}" onclick="pendingGoToPage(${pendingCurrentPage + 1})" ${nextDisabled}><i class="bi bi-chevron-right"></i></button>`;
+    
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+function pendingGoToPage(page) {
+    if (page < 1 || page > pendingTotalPages || page === pendingCurrentPage) return;
+    pendingCurrentPage = page;
+    fetchPendingData();
+}
+
+async function fetchPendingData(silent) {
+    const tableBody = document.getElementById('pending-data-body');
+    if (tableBody) {
+        tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted"><div class="loading"><div class="loading-spinner"></div><p>Memuat data pending...</p></div></td></tr>';
+    }
+    
     try {
-        const response = await fetch('/api/data/pending');
+        let url = `/api/data/pending?page=${pendingCurrentPage}&limit=${pendingPageSize}`;
+        
+        if (pendingFilterFrom) {
+            url += `&date_from=${encodeURIComponent(pendingFilterFrom)}`;
+        }
+        if (pendingFilterTo) {
+            url += `&date_to=${encodeURIComponent(pendingFilterTo)}`;
+        }
+        
+        const response = await fetch(url);
         const data = await response.json();
         
         if (data.success) {
+            pendingTotalRows = data.total || 0;
+            pendingTotalPages = data.total_pages || 1;
+            
             const fields = (data.klhk_fields || 'datetime,pH,cod,tss,nh3n,flow')
                 .split(',')
                 .map(f => f.trim())
                 .filter(f => f && f.toLowerCase() !== 'datetime');
             
-            let html = '';
-            let headerHtml = '<th>No</th><th>Tanggal</th>';
+            const headerHtml = '<th>No</th><th>Tanggal</th>'
+                + fields.map(f => `<th>${getFieldDisplayName(f)}</th>`).join('')
+                + '<th>Status</th><th>Keterangan</th>';
             
-            // Build dynamic headers (exclude datetime since we have Tanggal column)
-            fields.forEach(field => {
-                headerHtml += `<th>${getFieldDisplayName(field)}</th>`;
-            });
-            headerHtml += '<th>Status</th>';
-            headerHtml += '<th>Keterangan</th>';
-            
-            if (data.data.length === 0) {
-                const colSpan = fields.length + 3;
-                html = `<tr><td colspan="${colSpan}" class="text-center text-muted">Tidak ada data pending</td></tr>`;
-            } else {
-                data.data.forEach((row, idx) => {
-                    const datetimeValue = getFieldValue(row, 'datetime') || getFieldValue(row, 'date');
-                    const tanggal = formatDateCustom(datetimeValue);
-                    const statusKeterangan = row.keterangan || '';
-                    
-                    html += `<tr>
-                        <td>${idx + 1}</td>
-                        <td>${tanggal}</td>`;
-                    
-                    fields.forEach(field => {
-                        const value = getFieldValue(row, field);
-                        const formatted = formatFieldValue(value, field);
-                        html += `<td>${formatted}</td>`;
-                        
-                    });
-                    
-                    html += `<td><span class="badge badge-pending"><i class="bi bi-hourglass-split"></i> Pending </span></td>
-                    <td>${statusKeterangan}</td></tr>`;
-                });
-            }
-            
-            // Update the table header and body
             const table = document.getElementById('pending-data-table');
-            table.innerHTML = `
-                <thead>
-                    <tr>${headerHtml}</tr>
-                </thead>
-                <tbody>${html}</tbody>
-            `;
-            if (notify) {
+            if (table) {
+                table.innerHTML = `<thead><tr>${headerHtml}</tr></thead><tbody id="pending-data-body">${renderPendingTable(data.data, fields)}</tbody>`;
+            }
+            
+            renderPendingPagination();
+        } else {
+            if (!silent) {
                 Swal.fire({
-                    title: 'Berhasil',
-                    text: 'Data pending berhasil dimuat',
-                    icon: 'success',
-                    showConfirmButton: false,
-                    timer: 1500,
-                    timerProgressBar: true
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: data.error || 'Gagal memuat data pending'
                 });
             }
-        } else if (notify) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Gagal',
-                text: data.error || 'Gagal memuat data pending'
-            });
+            document.getElementById('pending-pagination').innerHTML = '';
         }
     } catch (error) {
         console.error('Error loading pending data:', error);
-        const colSpan = 7;
-        document.getElementById('pending-data-body').innerHTML = `<tr><td colspan="${colSpan}" class="text-center text-danger">Error loading data</td></tr>`;
-        if (notify) {
+        document.getElementById('pending-data-body').innerHTML = '<tr><td colspan="7" class="text-center text-danger">Error loading data</td></tr>';
+        document.getElementById('pending-pagination').innerHTML = '';
+        if (!silent) {
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
@@ -89,13 +161,16 @@ async function loadPendingData(options = {}) {
     }
 }
 
-// Helper function to convert DD-MM-YYYY HH:MM to YYYY-MM-DD HH:MM:SS format for API
+async function loadPendingData(options = {}) {
+    const { notify = false } = options;
+    pendingCurrentPage = 1;
+    pendingFilterFrom = '';
+    pendingFilterTo = '';
+    await fetchPendingData(notify);
+}
+
 function convertDateTimeFormat(datetimeStr) {
     if (!datetimeStr) return null;
-    
-    // Input format: D-M-YYYY H:M (from datepicker d-m-Y H:i format)
-    // Or: DD-MM-YYYY HH:MM (formatted version)
-    // Output format: YYYY-MM-DD HH:MM:SS (MySQL DATETIME format)
     
     const parts = datetimeStr.split(' ');
     if (parts.length !== 2) {
@@ -109,22 +184,18 @@ function convertDateTimeFormat(datetimeStr) {
         return datetimeStr;
     }
     
-    // Ensure values are properly padded with leading zeros
     const day = String(dateParts[0]).padStart(2, '0');
     const month = String(dateParts[1]).padStart(2, '0');
     const year = dateParts[2];
     
-    // Ensure time is in HH:MM format and add :00 for seconds
     const timeParts = parts[1].split(':');
     const hours = String(timeParts[0]).padStart(2, '0');
     const minutes = String(timeParts[1] || '0').padStart(2, '0');
     const time = `${hours}:${minutes}:00`;
     
-    const result = `${year}-${month}-${day} ${time}`;
-    return result;
+    return `${year}-${month}-${day} ${time}`;
 }
 
-// Filter pending data
 async function filterPendingData() {
     const dateFromInput = document.getElementById('filter-pending-from').value;
     const dateToInput = document.getElementById('filter-pending-to').value;
@@ -139,101 +210,26 @@ async function filterPendingData() {
         return;
     }
     
-    // Convert from DD-MM-YYYY HH:MM to YYYY-MM-DD HH:MM:SS for API
     const dateFrom = convertDateTimeFormat(dateFromInput);
     const dateTo = convertDateTimeFormat(dateToInput);
     
-    
-    try {
-        const response = await fetch('/api/data/filter', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                date_from: dateFrom,
-                date_to: dateTo,
-                table: 'data'
-            })
-        });
-        const data = await response.json();
-        
-        
-        if (data.success) {
-            // Get fields from response or use defaults
-            const fields = (data.klhk_fields || 'datetime,pH,cod,tss,nh3n,flow')
-                .split(',')
-                .map(f => f.trim())
-                .filter(f => f && f.toLowerCase() !== 'datetime');
-            
-            // Render filtered data
-            let html = '';
-            let headerHtml = '<th>No</th><th>Tanggal</th>';
-            
-            // Build dynamic headers
-            fields.forEach(field => {
-                headerHtml += `<th>${getFieldDisplayName(field)}</th>`;
-            });
-            headerHtml += '<th>Status</th>';
-            headerHtml += '<th>Keterangan</th>';
-            
-            if (data.data.length === 0) {
-                const colSpan = fields.length + 4;
-                html = '<tr><td colspan="' + colSpan + '" class="text-center text-muted">Tidak ada data pada rentang tanggal ini</td></tr>';
-            } else {
-                data.data.forEach((row, idx) => {
-                    const datetimeValue = getFieldValue(row, 'datetime') || getFieldValue(row, 'date');
-                    const tanggal = formatDateCustom(datetimeValue);
-                    const statusKeterangan = row.keterangan || '';
-                    
-                    html += `<tr>
-                        <td>${idx + 1}</td>
-                        <td>${tanggal}</td>`;
-                    
-                    fields.forEach(field => {
-                        const value = getFieldValue(row, field);
-                        const formatted = formatFieldValue(value, field);
-                        html += `<td>${formatted}</td>`;
-                    });
-                    
-                    html += `<td><span class="badge badge-pending"><i class="bi bi-hourglass-split"></i> Pending</span></td>
-                    <td>${statusKeterangan}</td></tr>`;
-                });
-            }
-            
-            // Update table headers and body
-            const table = document.getElementById('pending-data-table');
-            table.innerHTML = `
-                <thead>
-                    <tr>${headerHtml}</tr>
-                </thead>
-                <tbody id="pending-data-body">${html}</tbody>
-            `;
-            
-            Swal.fire({
-                title: 'Berhasil',
-                text: 'Data berhasil difilter',
-                icon: 'success',
-                timer: 2000
-            });
-        } else {
-            Swal.fire('Error', data.error || 'Gagal memfilter data', 'error');
-        }
-    } catch (error) {
-        console.error('Filter error:', error);
-        
+    if (!dateFrom || !dateTo) {
         Swal.fire({
-            title: 'Error Filter',
-            html: `
-                <p>Terjadi kesalahan saat memfilter data:</p>
-                <p style="color: red; font-size: 12px;">${error.message}</p>
-                <p style="font-size: 12px;">Silakan periksa browser console (F12) untuk detail error.</p>
-            `,
-            icon: 'error',
+            title: 'Filter Tanggal',
+            text: 'Format tanggal tidak valid',
+            icon: 'warning',
             confirmButtonColor: '#4f46e5'
         });
+        return;
     }
+    
+    pendingCurrentPage = 1;
+    pendingFilterFrom = dateFrom;
+    pendingFilterTo = dateTo;
+    
+    await fetchPendingData();
 }
 
-// Load send status
 async function loadSendStatus() {
     try {
         const response = await fetch('/api/send/status');
@@ -265,13 +261,11 @@ async function loadSendStatus() {
     }
 }
 
-// Reload pending data
 async function reloadPendingData() {
     await loadPendingData({ notify: true });
     await loadSendStatus();
 }
 
-// Manual send data
 async function manualSendData() {
     const dateFromInput = document.getElementById('filter-pending-from').value;
     const dateToInput = document.getElementById('filter-pending-to').value;
@@ -280,18 +274,15 @@ async function manualSendData() {
     let title, message, confirmText;
     
     if (!hasDateRange) {
-        // No date range specified - send ALL pending data
         title = '⚠️ Kirim SEMUA Data Pending?';
         message = 'Tanggal tidak dipilih! Ini akan mengirim SEMUA data pending ke KLHK. Pastikan ini sudah benar!';
         confirmText = 'Ya, Kirim Semua';
     } else {
-        // Date range specified - send filtered data
         title = 'Kirim Data Sesuai Range Tanggal?';
         message = `Data dari ${dateFromInput} hingga ${dateToInput} akan dikirim. Lanjutkan?`;
         confirmText = 'Ya, Kirim';
     }
     
-    // First confirmation
     const result = await Swal.fire({
         title: title,
         html: message,
@@ -307,7 +298,6 @@ async function manualSendData() {
         return;
     }
     
-    // For "send all" without date range, require extra confirmation
     if (!hasDateRange) {
         const extraConfirm = await Swal.fire({
             title: 'Konfirmasi Terakhir',
@@ -325,7 +315,6 @@ async function manualSendData() {
         }
     }
     
-    // Show loading dialog WITHOUT awaiting (don't block execution)
     Swal.fire({
         title: 'Mengirim Data...',
         html: '<p>Mohon tunggu, data sedang dikirim ke KLHK</p><p style="font-size: 12px; color: #999;">Jangan tutup halaman ini</p>',
@@ -338,7 +327,6 @@ async function manualSendData() {
         }
     });
     
-    // Prepare request payload
     const payload = {
         ...(hasDateRange && {
             date_from: convertDateTimeFormat(dateFromInput),
@@ -346,9 +334,7 @@ async function manualSendData() {
         })
     };
     
-    console.log('Manual send payload:', payload);
     const bodyString = JSON.stringify(payload);
-    console.log('Manual send body string:', bodyString);
     
     try {
         const response = await fetch('/api/send/manual', {
@@ -357,26 +343,16 @@ async function manualSendData() {
             body: bodyString
         });
         
-        console.log('Response status:', response.status);
-        console.log('Response ok:', response.ok);
-        
-        // Get response body
         const responseText = await response.text();
-        console.log('Response raw text:', responseText);
-        
-        // Parse JSON
         let data = {};
         try {
             data = JSON.parse(responseText);
         } catch (parseError) {
-            console.error('JSON parse error:', parseError);
             data = { success: false, error: 'Invalid response: ' + responseText };
         }
         
-        // Close loading dialog
         Swal.close();
         
-        // Check if success
         if (response.ok && data.success) {
             await Swal.fire({
                 title: '✅ Berhasil!',
@@ -389,12 +365,10 @@ async function manualSendData() {
                 confirmButtonColor: '#4f46e5'
             });
             
-            // Reload data after dialog closes
             await new Promise(resolve => setTimeout(resolve, 1000));
             loadPendingData();
             loadSendStatus();
         } else {
-            // Error response
             let errorMsg = data.error || 'Gagal memicu pengiriman manual';
             let errorDetail = '';
             
@@ -431,11 +405,6 @@ async function manualSendData() {
     }
 }
 
-
-
-
-
-// Helper function to format datetime to DD-MM-YYYY HH:MM format
 function formatDateTimeToString(date) {
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -445,9 +414,7 @@ function formatDateTimeToString(date) {
     return `${day}-${month}-${year} ${hours}:${minutes}`;
 }
 
-// Initialize jQuery Datepicker with datetime support
 function initDatetimePicker() {
-    // Wait for jQuery and jQuery DateTime Picker to be available
     if (typeof $ === 'undefined' || typeof $.datetimepicker === 'undefined') {
         console.warn('jQuery DateTime Picker not loaded yet, retrying...');
         setTimeout(initDatetimePicker, 200);
@@ -462,7 +429,7 @@ function initDatetimePicker() {
                 $.datetimepicker.setLocale('id');
                 
                 $(elements).datetimepicker({
-                    format: 'd-m-Y H:i',  // Format: DD-MM-YYYY HH:MM for display
+                    format: 'd-m-Y H:i',
                     formatTime: 'H:i',
                     formatDate: 'd-m-Y',
                     step: 1,
@@ -473,30 +440,25 @@ function initDatetimePicker() {
                     lang: 'id',
                     closeOnDateSelect: false,
                     onChangeDateTime: function(dp, $input) {
-                        // Ensure proper formatting with leading zeros
                         const value = $input.val();
                         if (value) {
                             const parts = value.split(' ');
                             if (parts.length === 2) {
                                 const dateParts = parts[0].split('-');
                                 if (dateParts.length === 3) {
-                                    // d-m-Y H:i -> DD-MM-YYYY HH:MM (with leading zeros)
                                     const day = String(dateParts[0]).padStart(2, '0');
                                     const month = String(dateParts[1]).padStart(2, '0');
                                     const year = dateParts[2];
                                     const timeParts = parts[1].split(':');
                                     const hours = String(timeParts[0]).padStart(2, '0');
                                     const minutes = String(timeParts[1] || '0').padStart(2, '0');
-                                    const formattedValue = `${day}-${month}-${year} ${hours}:${minutes}`;
-                                    $input.val(formattedValue);
-                                    console.log('Formatted datepicker value:', formattedValue);
+                                    $input.val(`${day}-${month}-${year} ${hours}:${minutes}`);
                                 }
                             }
                         }
                     }
                 });
                 
-                // Mark them as initialized
                 elements.forEach(el => {
                     el.setAttribute('data-datetimepicker-initialized', 'true');
                 });
@@ -511,13 +473,10 @@ function initDatetimePicker() {
     }, 50);
 }
 
-// Initialize when section loads
 if (typeof window.initPendingDataSection === 'undefined') {
     window.initPendingDataSection = function() {
         loadPendingData();
         loadSendStatus();
         initDatetimePicker();
-        // Note: Auto-refresh is disabled for pending-data section
-        // Refresh is handled by main scheduler in main.js
     };
 }
