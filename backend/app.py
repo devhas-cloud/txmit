@@ -939,28 +939,26 @@ def get_all_data():
             limit = 15
         offset = (page - 1) * limit
         
-        params_count = []
-        params_data = []
         date_col = '`date`'
         
-        where_data = "1=1"
+        date_conds = ""
+        date_params = []
         if date_from:
-            where_data += f" AND {date_col} >= %s"
-            params_count.append(date_from)
-            params_data.append(date_from)
+            date_conds += f" AND {date_col} >= %s"
+            date_params.append(date_from)
         if date_to:
-            where_data += f" AND {date_col} <= %s"
-            params_count.append(date_to)
-            params_data.append(date_to)
+            date_conds += f" AND {date_col} <= %s"
+            date_params.append(date_to)
         
         union_where = f"""
-            SELECT * FROM data WHERE {where_data}
+            SELECT * FROM data WHERE 1=1{date_conds}
             UNION ALL
-            SELECT * FROM tmp WHERE {where_data}
+            SELECT * FROM tmp WHERE 1=1{date_conds}
         """
         
+        count_params = date_params * 2
         count_query = f"SELECT COUNT(*) as total FROM ({union_where}) AS combined_data"
-        cursor.execute(count_query, params_count)
+        cursor.execute(count_query, count_params)
         total = cursor.fetchone()['total']
         
         data_query = f"""
@@ -968,7 +966,7 @@ def get_all_data():
         ORDER BY {date_col} DESC
         LIMIT %s OFFSET %s
         """
-        data_params = params_data + [limit, offset]
+        data_params = (date_params * 2) + [limit, offset]
         
         cursor.execute(data_query, data_params)
         rows = cursor.fetchall()
