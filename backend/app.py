@@ -940,9 +940,9 @@ def get_all_data():
         offset = (page - 1) * limit
         
         date_col = '`date`'
-        
-        date_conds = ""
         date_params = []
+        date_conds = ""
+        
         if date_from:
             date_conds += f" AND {date_col} >= %s"
             date_params.append(date_from)
@@ -950,23 +950,24 @@ def get_all_data():
             date_conds += f" AND {date_col} <= %s"
             date_params.append(date_to)
         
-        union_where = f"""
+        # Count separately per table (avoids UNION-in-subquery param doubling issues)
+        cursor.execute(f"SELECT COUNT(*) as cnt FROM data WHERE 1=1{date_conds}", date_params)
+        cnt_data = cursor.fetchone()['cnt']
+        cursor.execute(f"SELECT COUNT(*) as cnt FROM tmp WHERE 1=1{date_conds}", date_params)
+        cnt_tmp = cursor.fetchone()['cnt']
+        total = cnt_data + cnt_tmp
+        
+        union_conds = date_params + date_params
+        data_query = f"""
+        SELECT * FROM (
             SELECT * FROM data WHERE 1=1{date_conds}
             UNION ALL
             SELECT * FROM tmp WHERE 1=1{date_conds}
-        """
-        
-        count_params = date_params * 2
-        count_query = f"SELECT COUNT(*) as total FROM ({union_where}) AS combined_data"
-        cursor.execute(count_query, count_params)
-        total = cursor.fetchone()['total']
-        
-        data_query = f"""
-        SELECT * FROM ({union_where}) AS combined_data
+        ) AS combined_data
         ORDER BY {date_col} DESC
         LIMIT %s OFFSET %s
         """
-        data_params = (date_params * 2) + [limit, offset]
+        data_params = union_conds + [limit, offset]
         
         cursor.execute(data_query, data_params)
         rows = cursor.fetchall()
