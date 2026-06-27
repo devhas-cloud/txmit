@@ -77,52 +77,50 @@ def refreshConfig():
 
 
 def ambil_data(fields, date):
-    """Ambil data dari tabel 'data' yang belum dikirim (has = '0')"""
+    """Ambil data dari tabel 'data' yang belum dikirim (has = '0'), return (ids, rows_without_id)"""
     try:
         with mysql.connector.connect(**MYSQL_CONFIG) as conn:
             with conn.cursor() as cursor:
-                # Gunakan parameterized query untuk mencegah SQL injection
                 field_str = ', '.join(fields)
-                query = f"SELECT {field_str} FROM data WHERE has = '0' AND `date`  <= %s ORDER BY `date` ASC LIMIT 1000"
+                query = f"SELECT id, {field_str} FROM data WHERE has = '0' AND `date` <= %s ORDER BY `date` ASC LIMIT 1000"
                 cursor.execute(query, (date,))
                 rows = cursor.fetchall()
                 
                 if rows:
-                    return rows
-                else:
-                    return None
+                    ids = [row[0] for row in rows]
+                    return ids, [row[1:] for row in rows]
+                return [], []
                 
     except mysql.connector.Error as e:
         write_log(f"❌ DB Error: {e}")
-        return None
+        return [], []
     except Exception as e:
         write_log(f"❌ Error ambil_data: {e}")
-        return None
+        return [], []
 
 
 
 def ambil_tmp(fields, date):
-    """Ambil data dari tabel 'tmp' yang belum dikirim (has = '0')"""
+    """Ambil data dari tabel 'tmp' yang belum dikirim (has = '0'), return (ids, rows_without_id)"""
     try:
         with mysql.connector.connect(**MYSQL_CONFIG) as conn:
             with conn.cursor() as cursor:
-                # Gunakan parameterized query untuk mencegah SQL injection
                 field_str = ', '.join(fields)
-                query = f"SELECT {field_str} FROM tmp WHERE has = '0' AND `date`  <= %s ORDER BY `date` ASC LIMIT 1000"
+                query = f"SELECT id, {field_str} FROM tmp WHERE has = '0' AND `date` <= %s ORDER BY `date` ASC LIMIT 1000"
                 cursor.execute(query, (date,))
                 rows = cursor.fetchall()
                 
                 if rows:
-                    return rows
-                else:
-                    return None
+                    ids = [row[0] for row in rows]
+                    return ids, [row[1:] for row in rows]
+                return [], []
                 
     except mysql.connector.Error as e:
         write_log(f"❌ DB Error: {e}")
-        return None
+        return [], []
     except Exception as e:
         write_log(f"❌ Error ambil_tmp: {e}")
-        return None
+        return [], []
 
 
 def proses_data(rows):
@@ -178,51 +176,50 @@ def send_data_to_api(date):
         "Content-Type": "application/json"
     }
     
-    # Ambil dan proses data dari kedua tabel
-    data_rows = ambil_data(FIELDS, date_str)
-    payloadData = proses_data(data_rows) if data_rows else []
-    
-    tmp_rows = ambil_tmp(FIELDS, date_str)
-    payloadTmp = proses_data(tmp_rows) if tmp_rows else []
-    
+    # Ambil data dan ID dari kedua tabel
+    data_ids, data_rows = ambil_data(FIELDS, date_str)
+    payloadData = proses_data(data_rows)
+
+    tmp_ids, tmp_rows = ambil_tmp(FIELDS, date_str)
+    payloadTmp = proses_data(tmp_rows)
+
+    if not data_ids and not tmp_ids:
+        write_log(f"ℹ️ Tidak ada data baru untuk dikirim ke HAS API pada tanggal {date_str}.")
+        return False
+
     # Gabungkan data dari kedua tabel
     payload = {
         "device_id": DEVICE_ID,
         "data": payloadData + payloadTmp
     }
 
-    if not payload["data"]:
-        write_log(f"ℹ️ Tidak ada data baru untuk dikirim ke HAS API pada tanggal {date_str}.")
-        return False
-
-    max_timestamp = max(r['timestamp'] for r in payload['data'])
-
     try:
-        response = requests.post(API_ENDPOINT, headers=headers, json=payload,timeout=(29, 59))
+        response = requests.post(API_ENDPOINT, headers=headers, json=payload, timeout=(29, 59))
         write_log(f"Payload:\n{json.dumps(payload, indent=4, sort_keys=False)}")
 
-        if response.status_code in [200, 201]:  # 200 OK atau 201 Created
+        if response.status_code in [200, 201]:
             write_log(f"✅ Data untuk tanggal {date_str} berhasil dikirim ke HAS API.")
-            
-            # Update status 'has' di database
+
             try:
                 with mysql.connector.connect(**MYSQL_CONFIG) as conn:
                     with conn.cursor() as cursor:
-                        # Gunakan parameterized query
-                        cursor.execute(
-                            "UPDATE data SET has = '1' WHERE has = '0' AND unix_time <= %s",
-                            (max_timestamp,)
-                        )
-                        data_updated = cursor.rowcount
-                        
-                        cursor.execute(
-                            "UPDATE tmp SET has = '1' WHERE has = '0' AND unix_time <= %s",
-                            (max_timestamp,)
-                        )
-                        tmp_updated = cursor.rowcount
-                        
+                        data_updated = 0
+                        tmp_updated = 0
+
+                        if data_ids:
+                            cursor.execute(
+                                "UPDATE data SET has = '1' WHERE id IN ({})".format(','.join(map(str, data_ids)))
+                            )
+                            data_updated = cursor.rowcount
+
+                        if tmp_ids:
+                            cursor.execute(
+                                "UPDATE tmp SET has = '1' WHERE id IN ({})".format(','.join(map(str, tmp_ids)))
+                            )
+                            tmp_updated = cursor.rowcount
+
                         conn.commit()
-                        write_log(f"✅ Status 'has' diperbarui: {data_updated} rows di 'data', {tmp_updated} rows di 'tmp' (max unix_time: {max_timestamp})")
+                        write_log(f"✅ Status 'has' diperbarui: {data_updated} rows di 'data', {tmp_updated} rows di 'tmp'")
             except mysql.connector.Error as e:
                 write_log(f"❌ DB Error saat memperbarui status 'has': {e}")
             except Exception as e:
