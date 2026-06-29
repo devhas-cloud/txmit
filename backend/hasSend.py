@@ -82,7 +82,7 @@ def ambil_data(fields, date):
         with mysql.connector.connect(**MYSQL_CONFIG) as conn:
             with conn.cursor() as cursor:
                 field_str = ', '.join(fields)
-                query = f"SELECT id, {field_str} FROM data WHERE has = '0' AND `date` <= %s ORDER BY `date` ASC LIMIT 1000"
+                query = f"SELECT id, {field_str} FROM data WHERE has = '0' AND `date` <= %s ORDER BY `date` ASC LIMIT 2160"
                 cursor.execute(query, (date,))
                 rows = cursor.fetchall()
                 
@@ -106,7 +106,7 @@ def ambil_tmp(fields, date):
         with mysql.connector.connect(**MYSQL_CONFIG) as conn:
             with conn.cursor() as cursor:
                 field_str = ', '.join(fields)
-                query = f"SELECT id, {field_str} FROM tmp WHERE has = '0' AND `date` <= %s ORDER BY `date` ASC LIMIT 1000"
+                query = f"SELECT id, {field_str} FROM tmp WHERE has = '0' AND `date` <= %s ORDER BY `date` ASC LIMIT 2160"
                 cursor.execute(query, (date,))
                 rows = cursor.fetchall()
                 

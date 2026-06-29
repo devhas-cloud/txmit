@@ -133,7 +133,7 @@ async function fetchAllData(silent) {
             const hasFields = (data.has_fields || 'pH,cod,tss,nh3n,flow')
                 .split(',')
                 .map(f => f.trim())
-                .filter(f => f && f.toLowerCase() !== 'datetime');
+                .filter(f => f && f.toLowerCase() !== 'unix_time');
             
             const headerHtml = '<th>No</th><th>Create At</th><th>Tanggal</th>'
                 + hasFields.map(f => `<th>${getFieldDisplayName(f)}</th>`).join('')
