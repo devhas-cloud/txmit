@@ -72,9 +72,9 @@ COLUMN_MAP = {
 
     "debit - measured": "flow",
     "flowrate - measured": "flow",
+    "flow - measured": "flow",
 
     "total flow - measured": "tflow",
-    "tflow - measured" : "tflow",
 
     "turbidity - measured": "turb",
     "turbidit - measured": "turb",
@@ -200,9 +200,12 @@ def prosesCsv():
 
                 header_index = {}
                 for idx, h in enumerate(normalized_headers):
+                    best_key = None
                     for key, target in COLUMN_MAP.items():
-                        if key in h:
-                            header_index[target] = idx
+                        if key in h and (best_key is None or len(key) > len(best_key)):
+                            best_key = key
+                    if best_key:
+                        header_index[COLUMN_MAP[best_key]] = idx
 
                 write_log(f"Header terdeteksi: {header_index}")
 
