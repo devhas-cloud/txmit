@@ -74,7 +74,7 @@ COLUMN_MAP = {
     "flowrate - measured": "flow",
     "flow - measured": "flow",
 
-    "total flow": "tflow",
+    "total flow - measured": "tflow",
 
     "turbidity - measured": "turb",
     "turbidit - measured": "turb",
