@@ -72,7 +72,6 @@ COLUMN_MAP = {
 
     "debit - measured": "flow",
     "flowrate - measured": "flow",
-    "flow - measured": "flow",
 
     "total flow - measured": "tflow",
     "tflow - measured" : "tflow",
